@@ -5,9 +5,13 @@ import { roleCheckMiddleware } from "../middlewares/roleCheckMiddleware.js";
 
 const aiRouter = express.Router();
 
-// Apply auth and admin check only to /ai routes
-aiRouter.get("/ask-ai",authMiddleware,roleCheckMiddleware, askAI);
-aiRouter.use("/ai", authMiddleware, roleCheckMiddleware);
-aiRouter.post("/ai/generate", generateQuiz);
+// All AI routes require authenticated admin
+aiRouter.use(authMiddleware, roleCheckMiddleware);
+
+// Generate AI Quiz
+aiRouter.post("/generate", generateQuiz);
+
+// General AI Chat
+aiRouter.post("/ask", askAI);
 
 export default aiRouter;

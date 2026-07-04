@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
-import path from "path";
 import cors from "cors";
 
 const app = express();
@@ -16,23 +15,27 @@ import questionRouter from "./routes/question.route.js";
 import attemptRouter from "./routes/attempt.route.js";
 import leaderboardRouter from "./routes/leaderboard.route.js";
 import userRouter from "./routes/user.route.js";
+import aiRouter from "./routes/ai.route.js"; // ✅ Import AI Routes
+
 import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
 
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5175",
+    ],
+    credentials: true,
+  })
+);
 
+app.use(express.json());
 
-//middleware- helps to parse json
-
-app.use(cors({
-  origin: ['http://localhost:5173', 'https://localhost:5174']
-}));
-
-const jsonMiddleware = express.json();
-app.use(jsonMiddleware);
-
-// Serve static uploads
+// Static Folder
 app.use("/uploads", express.static("uploads"));
 
-//attach routes
+// Routes
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1", categoryRouter);
 app.use("/api/v1", quizRouter);
@@ -40,6 +43,9 @@ app.use("/api/v1", questionRouter);
 app.use("/api/v1", attemptRouter);
 app.use("/api/v1", leaderboardRouter);
 app.use("/api/v1", userRouter);
+
+// ✅ AI Routes
+app.use("/api/v1/ai", aiRouter);
 
 app.use(exceptionHandler);
 

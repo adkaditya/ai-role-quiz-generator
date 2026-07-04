@@ -1,2 +1,38 @@
 /backend/node_modules/
 /backend/.env
+
+# Dependencies
+**/node_modules/
+
+# Environment Variables
+**/.env
+**/.env.local
+**/.env.development
+**/.env.production
+
+# Build Files
+**/dist/
+**/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Runtime
+*.pid
+
+# Uploads (optional - if generated at runtime)
+backend/uploads/
