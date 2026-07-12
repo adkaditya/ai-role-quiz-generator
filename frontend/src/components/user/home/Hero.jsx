@@ -1,9 +1,20 @@
 import { motion } from "framer-motion";
-import { Sparkles, ArrowRight, CheckCircle, Users, BookOpen, Trophy } from "lucide-react";
-import { Button } from "../../ui/button";
-import { Badge } from "../../ui/badge";
+import CountUp from "react-countup";
+import { TypeAnimation } from "react-type-animation";
 
-const stats = [
+import {
+  Sparkles,
+  ArrowRight,
+  CheckCircle,
+  Users,
+  BookOpen,
+  Trophy,
+  Play,
+  Star,
+} from "lucide-react";
+
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";const stats = [
   { icon: Users, value: "10K+", label: "Active Learners" },
   { icon: BookOpen, value: "50K+", label: "Quizzes Created" },
   { icon: Trophy, value: "98%", label: "Satisfaction Rate" },
@@ -18,7 +29,37 @@ const mockQuestion = {
 export default function Hero() {
   return (
     <section className="relative overflow-hidden">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(var(--primary)/0.15),transparent)]" />
+   <>
+  <div className="absolute inset-0 -z-30 bg-background" />
+
+  <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.18),transparent_50%)]" />
+
+  <div className="absolute inset-0 -z-20 bg-[linear-gradient(to_right,hsl(var(--border)/0.2)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.2)_1px,transparent_1px)] bg-[size:42px_42px]" />
+
+  <motion.div
+    animate={{
+      x: [0, 80, 0],
+      y: [0, -60, 0],
+    }}
+    transition={{
+      repeat: Infinity,
+      duration: 12,
+    }}
+    className="absolute top-10 left-0 h-80 w-80 rounded-full bg-violet-500/20 blur-[120px]"
+  />
+
+  <motion.div
+    animate={{
+      x: [0, -80, 0],
+      y: [0, 60, 0],
+    }}
+    transition={{
+      repeat: Infinity,
+      duration: 15,
+    }}
+    className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-cyan-500/20 blur-[150px]"
+  />
+</>
 
       <div className="container mx-auto px-6 py-24">
         <div className="grid md:grid-cols-2 gap-16 items-center">

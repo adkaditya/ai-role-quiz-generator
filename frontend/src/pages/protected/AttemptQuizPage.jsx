@@ -46,6 +46,7 @@ import {
 } from "../../services/quiz.service";
 import Loading from "../../components/shared/Loading";
 import { useSidebar } from "../../components/ui/sidebar";
+import useProctoring from "../../hooks/useProctoring";
 
 function AttemptQuizPage() {
   const { quizId } = useParams();
@@ -68,6 +69,20 @@ function AttemptQuizPage() {
   const { setOpen, setOpenMobile, open, openMobile, isMobile } = useSidebar();
   const sidebarWasOpenRef = useRef(null);
 
+   useProctoring({
+  enabled: quizPhase === "playing",
+
+  onViolation: async (type) => {
+
+    toast.error(
+      `Assessment Auto Submitted.\nReason : ${type}`
+    );
+
+    await triggerAutoSubmit();
+
+  },
+
+});
   // Intercept the browser back button and trigger popstate warnings
   useEffect(() => {
     if (quizPhase !== "playing") return;
@@ -218,11 +233,32 @@ function AttemptQuizPage() {
     return () => clearInterval(interval);
   }, [quizPhase, timerSeconds]);
 
-  // Start the actual attempt
-  const handleStartQuiz = async () => {
-    if (!quiz) return;
-    setIsStartingQuiz(true);
-    try {
+  const handleBeginChallenge = async () => {
+  try {
+    // Enter FullScreen
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    }
+
+    // Start Quiz
+    await handleStartQuiz();
+
+  } catch (error) {
+    console.error("Fullscreen Error:", error);
+    toast.error("Please allow Fullscreen to start the assessment.");
+  }
+};
+
+// start the actual attempt
+const handleStartQuiz = async () => {
+
+  if (!quiz) return;
+
+  setIsStartingQuiz(true);
+
+  
+try {
+
       // 1. Fetch questions first
       const questionsRes = await getQuizQuestions(quiz._id);
       const quizQuestions = questionsRes.data?.questions || [];
@@ -232,6 +268,7 @@ function AttemptQuizPage() {
         return;
       }
 
+  
       // 2. Start attempt in backend
       const attemptRes = await startAttempt(quiz._id);
       const attemptObj = attemptRes.data?.attempt;
@@ -573,7 +610,7 @@ function AttemptQuizPage() {
               </Button>
               <Button
                 className="cursor-pointer bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex gap-2 items-center px-6"
-                onClick={handleStartQuiz}
+                onClick={handleBeginChallenge}
                 disabled={isStartingQuiz}
               >
                 {isStartingQuiz ? (
