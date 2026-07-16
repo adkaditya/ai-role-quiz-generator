@@ -9,9 +9,11 @@ const useProctoring = ({ enabled, onViolation }) => {
     // Fullscreen Exit Detection
     // ==========================
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        onViolation?.(VIOLATIONS.FULLSCREEN);
-      }
+      setTimeout(() => {
+        if (!document.fullscreenElement) {
+          onViolation?.(VIOLATIONS.FULLSCREEN);
+        }
+      }, 150);
     };
 
     // ==========================
@@ -70,21 +72,30 @@ const useProctoring = ({ enabled, onViolation }) => {
       }
 
       // Copy
-      if (isModifierPressed && key === "c") {
+      if (
+        isModifierPressed &&
+        key === "c"
+      ) {
         event.preventDefault();
         onViolation?.(VIOLATIONS.COPY);
         return;
       }
 
       // Paste
-      if (isModifierPressed && key === "v") {
+      if (
+        isModifierPressed &&
+        key === "v"
+      ) {
         event.preventDefault();
         onViolation?.(VIOLATIONS.PASTE);
         return;
       }
 
       // Cut
-      if (isModifierPressed && key === "x") {
+      if (
+        isModifierPressed &&
+        key === "x"
+      ) {
         event.preventDefault();
         onViolation?.(VIOLATIONS.CUT);
         return;
@@ -112,6 +123,11 @@ const useProctoring = ({ enabled, onViolation }) => {
       handleVisibilityChange
     );
 
+    window.addEventListener(
+      "blur",
+      handleVisibilityChange
+    );
+
     document.addEventListener(
       "keydown",
       handleKeyDown
@@ -133,6 +149,11 @@ const useProctoring = ({ enabled, onViolation }) => {
 
       document.removeEventListener(
         "visibilitychange",
+        handleVisibilityChange
+      );
+
+      window.removeEventListener(
+        "blur",
         handleVisibilityChange
       );
 

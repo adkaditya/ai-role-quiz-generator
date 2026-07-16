@@ -1,3 +1,4 @@
+import usePhoneDetection from "@/hooks/usePhoneDetection";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -10,6 +11,7 @@ import QuizResult from "@/components/quiz/QuizResult";
 
 import useProctoring from "@/hooks/useProctoring";
 import useCameraMonitoring from "@/hooks/useCameraMonitoring";
+import WarningDialog from "@/components/quiz/WarningDialog";
 
 import {
   getQuizById,
@@ -54,6 +56,11 @@ const AttemptQuizPage = () => {
 
   const [submitting, setSubmitting] =
     useState(false);
+    const [warningOpen, setWarningOpen] = useState(false);
+
+const [warningMessage, setWarningMessage] = useState("");
+
+const [countdown, setCountdown] = useState(5);
 
   // ===================================
   // Refs
@@ -71,43 +78,55 @@ const AttemptQuizPage = () => {
   // Camera Hook
   // ===================================
 
-  const {
+ const {
+  videoRef,
+  cameraEnabled,
+} = useCameraMonitoring({
 
-    videoRef,
+  enabled: phase === "playing",
 
-    cameraEnabled,
+  onViolation: (reason) => {
 
-  } = useCameraMonitoring({
+    showViolationWarning(reason);
 
-    enabled: phase === "playing",
+  },
 
-    onViolation: async (reason) => {
+});
+  // ===================================
+// Phone Detection
+// ===================================
 
-      toast.error(reason);
+const { modelLoaded } = usePhoneDetection({
 
-      await triggerAutoSubmit();
+  videoRef,
 
-    },
+  enabled: phase === "playing",
 
-  });
+  onPhoneDetected: async () => {
+
+    toast.error("📱 Mobile Phone Detected!");
+
+    await triggerAutoSubmit();
+
+  },
+
+});
 
   // ===================================
   // Proctoring Hook
   // ===================================
 
-  useProctoring({
+ useProctoring({
 
-    enabled: phase === "playing",
+  enabled: phase === "playing",
 
-    onViolation: async (reason) => {
+  onViolation: (reason) => {
 
-      toast.error(reason);
+    showViolationWarning(reason);
 
-      await triggerAutoSubmit();
+  },
 
-    },
-
-  });
+});
 
   // ===================================
   // Sync Refs
@@ -449,7 +468,11 @@ const AttemptQuizPage = () => {
   // ===================================
   // Auto Submit
   // ===================================
-
+const showViolationWarning = (message) => {
+  setWarningMessage(message);
+  setWarningOpen(true);
+  setCountdown(5);
+};
   const triggerAutoSubmit = async () => {
 
     if (!attemptRef.current) return;

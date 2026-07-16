@@ -140,6 +140,56 @@ const QuizResult = ({
                   Explanation:
 
                 </p>
+                <div className="mt-5 space-y-3">
+
+  {question.options?.map((option, optionIndex) => {
+
+    const isCorrect =
+      question.correctAnswer?.includes(optionIndex);
+
+    const isSelected =
+      answer.selectedAnswers?.includes(optionIndex);
+
+    return (
+
+      <div
+        key={optionIndex}
+        className={`border rounded-lg p-3 flex justify-between items-center
+
+        ${
+          isCorrect
+            ? "border-green-500 bg-green-500/10"
+            : isSelected
+            ? "border-red-500 bg-red-500/10"
+            : "border-gray-700"
+        }`}
+      >
+
+        <span>{option}</span>
+
+        <div className="flex gap-2">
+
+          {isSelected && (
+            <span className="text-blue-400 text-sm">
+              Your Answer
+            </span>
+          )}
+
+          {isCorrect && (
+            <span className="text-green-400 text-sm">
+              Correct
+            </span>
+          )}
+
+        </div>
+
+      </div>
+
+    );
+
+  })}
+
+</div>
 
                 <p className="mt-2">
 

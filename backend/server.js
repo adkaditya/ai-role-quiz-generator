@@ -9,6 +9,7 @@ const app = express();
 import "./utils/db.js";
 
 import authRouter from "./routes/auth.route.js";
+import violationRouter from "./routes/violation.route.js";
 import categoryRouter from "./routes/category.route.js";
 import quizRouter from "./routes/quiz.route.js";
 import questionRouter from "./routes/question.route.js";
@@ -18,6 +19,7 @@ import userRouter from "./routes/user.route.js";
 import aiRouter from "./routes/ai.route.js"; // ✅ Import AI Routes
 
 import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
+
 
 app.use(
   cors({
@@ -37,6 +39,7 @@ app.use("/uploads", express.static("uploads"));
 
 // Routes
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/violations", violationRouter);
 app.use("/api/v1", categoryRouter);
 app.use("/api/v1", quizRouter);
 app.use("/api/v1", questionRouter);
