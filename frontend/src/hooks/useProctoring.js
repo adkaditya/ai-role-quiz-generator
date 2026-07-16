@@ -2,91 +2,106 @@ import { useEffect } from "react";
 import { VIOLATIONS } from "../constants/violationTypes";
 
 const useProctoring = ({ enabled, onViolation }) => {
-  const handleKeyDown = (event) => {
-
-    const key = event.key.toLowerCase();
-
-    const isModifierPressed = event.ctrlKey || event.metaKey;
+  useEffect(() => {
+    if (!enabled) return;
 
     // ==========================
-    // DevTools Detection
+    // Fullscreen Exit Detection
     // ==========================
-
-    // F12
-    if (event.key === "F12") {
-      event.preventDefault();
-      onViolation?.(VIOLATIONS.DEVTOOLS);
-      return;
-    }
-
-    // Ctrl + Shift + I
-    if (
-      isModifierPressed &&
-      event.shiftKey &&
-      key === "i"
-    ) {
-      event.preventDefault();
-      onViolation?.(VIOLATIONS.DEVTOOLS);
-      return;
-    }
-
-    // Ctrl + Shift + J
-    if (
-      isModifierPressed &&
-      event.shiftKey &&
-      key === "j"
-    ) {
-      event.preventDefault();
-      onViolation?.(VIOLATIONS.DEVTOOLS);
-      return;
-    }
-
-    // Ctrl + U
-    if (
-      isModifierPressed &&
-      key === "u"
-    ) {
-      event.preventDefault();
-      onViolation?.(VIOLATIONS.DEVTOOLS);
-      return;
-    }
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        onViolation?.(VIOLATIONS.FULLSCREEN);
+      }
+    };
 
     // ==========================
-    // Copy
+    // Tab Switching Detection
     // ==========================
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        onViolation?.(VIOLATIONS.TAB_SWITCH);
+      }
+    };
 
-    if (isModifierPressed && key === "c") {
+    // ==========================
+    // Keyboard Detection
+    // ==========================
+    const handleKeyDown = (event) => {
+      const key = event.key.toLowerCase();
+      const isModifierPressed = event.ctrlKey || event.metaKey;
+
+      // F12
+      if (event.key === "F12") {
+        event.preventDefault();
+        onViolation?.(VIOLATIONS.DEVTOOLS);
+        return;
+      }
+
+      // Ctrl + Shift + I
+      if (
+        isModifierPressed &&
+        event.shiftKey &&
+        key === "i"
+      ) {
+        event.preventDefault();
+        onViolation?.(VIOLATIONS.DEVTOOLS);
+        return;
+      }
+
+      // Ctrl + Shift + J
+      if (
+        isModifierPressed &&
+        event.shiftKey &&
+        key === "j"
+      ) {
+        event.preventDefault();
+        onViolation?.(VIOLATIONS.DEVTOOLS);
+        return;
+      }
+
+      // Ctrl + U
+      if (
+        isModifierPressed &&
+        key === "u"
+      ) {
+        event.preventDefault();
+        onViolation?.(VIOLATIONS.DEVTOOLS);
+        return;
+      }
+
+      // Copy
+      if (isModifierPressed && key === "c") {
+        event.preventDefault();
+        onViolation?.(VIOLATIONS.COPY);
+        return;
+      }
+
+      // Paste
+      if (isModifierPressed && key === "v") {
+        event.preventDefault();
+        onViolation?.(VIOLATIONS.PASTE);
+        return;
+      }
+
+      // Cut
+      if (isModifierPressed && key === "x") {
+        event.preventDefault();
+        onViolation?.(VIOLATIONS.CUT);
+        return;
+      }
+    };
+
+    // ==========================
+    // Right Click Detection
+    // ==========================
+    const handleContextMenu = (event) => {
       event.preventDefault();
-      onViolation?.(VIOLATIONS.COPY);
-      return;
-    }
+      onViolation?.(VIOLATIONS.RIGHT_CLICK);
+    };
 
-    // Paste
-    if (isModifierPressed && key === "v") {
-      event.preventDefault();
-      onViolation?.(VIOLATIONS.PASTE);
-      return;
-    }
-
-    // Cut
-    if (isModifierPressed && key === "x") {
-      event.preventDefault();
-      onViolation?.(VIOLATIONS.CUT);
-      return;
-    }
-
-};
-  // Right Click Detection
-// ======================================
-const handleContextMenu = (event) => {
-  event.preventDefault();
-  if (onViolation) {
-    onViolation(VIOLATIONS.RIGHT_CLICK);
-  }
-};
-    // ======================================
-    // Register Browser Events
-    // ======================================
+    // ==========================
+    // Register Events
+    // ==========================
     document.addEventListener(
       "fullscreenchange",
       handleFullscreenChange
@@ -107,9 +122,9 @@ const handleContextMenu = (event) => {
       handleContextMenu
     );
 
-    // ======================================
+    // ==========================
     // Cleanup
-    // ======================================
+    // ==========================
     return () => {
       document.removeEventListener(
         "fullscreenchange",
@@ -131,7 +146,7 @@ const handleContextMenu = (event) => {
         handleContextMenu
       );
     };
-   [enabled, onViolation];
+  }, [enabled, onViolation]);
 };
 
 export default useProctoring;
