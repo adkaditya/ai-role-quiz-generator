@@ -1,4 +1,4 @@
-import usePhoneDetection from "@/hooks/usePhoneDetection";
+
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -66,6 +66,8 @@ const [countdown, setCountdown] = useState(5);
   // Refs
   // ===================================
 
+  const hasSubmittedRef = useRef(false);
+
   const attemptRef = useRef(null);
 
   const answersRef = useRef({});
@@ -73,6 +75,8 @@ const [countdown, setCountdown] = useState(5);
   const questionsRef = useRef([]);
 
   const startTimeRef = useRef(Date.now());
+
+   
 
   // ===================================
   // Camera Hook
@@ -94,23 +98,7 @@ const [countdown, setCountdown] = useState(5);
 });
   // ===================================
 // Phone Detection
-// ===================================
 
-const { modelLoaded } = usePhoneDetection({
-
-  videoRef,
-
-  enabled: phase === "playing",
-
-  onPhoneDetected: async () => {
-
-    toast.error("📱 Mobile Phone Detected!");
-
-    await triggerAutoSubmit();
-
-  },
-
-});
 
   // ===================================
   // Proctoring Hook
@@ -406,8 +394,9 @@ const { modelLoaded } = usePhoneDetection({
   // ===================================
 
   const handleSubmitQuiz = async () => {
+if (hasSubmittedRef.current) return;
 
-    if (!attempt) return;
+hasSubmittedRef.current = true;
 
     try {
 
@@ -468,14 +457,39 @@ const { modelLoaded } = usePhoneDetection({
   // ===================================
   // Auto Submit
   // ===================================
+const warningTimerRef = useRef(null);
+
 const showViolationWarning = (message) => {
+  if (warningOpen) return;
   setWarningMessage(message);
   setWarningOpen(true);
   setCountdown(5);
 };
-  const triggerAutoSubmit = async () => {
 
-    if (!attemptRef.current) return;
+useEffect(() => {
+  if (!warningOpen) return;
+
+  warningTimerRef.current = setInterval(() => {
+    setCountdown((prev) => {
+      if (prev <= 1) {
+        clearInterval(warningTimerRef.current);
+        setWarningOpen(false);
+        triggerAutoSubmit();
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+
+  return () => clearInterval(warningTimerRef.current);
+}, [warningOpen]);
+
+const triggerAutoSubmit = async () => {
+  if (!attemptRef.current) return;
+
+  if (hasSubmittedRef.current) return;
+
+hasSubmittedRef.current = true;
 
     try {
 
@@ -536,7 +550,9 @@ const showViolationWarning = (message) => {
   // ===================================
 
   const handleRetakeQuiz = () => {
+    clearInterval(warningTimerRef.current);
 
+    hasSubmittedRef.current = false;
     setQuestions([]);
 
     setAttempt(null);
@@ -676,6 +692,25 @@ const showViolationWarning = (message) => {
           navigate={navigate}
         />
       )}
+
+      <WarningDialog
+  open={warningOpen}
+  message={warningMessage}
+  countdown={countdown}
+  onContinue={async () => {
+    clearInterval(warningTimerRef.current);
+
+    setWarningOpen(false);
+
+    if (!document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch (err) {
+        console.log("Fullscreen request failed", err);
+      }
+    }
+  }}
+/>
 
     </div>
   );
