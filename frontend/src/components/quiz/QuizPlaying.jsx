@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import QuestionCard from "./QuestionCard";
 import CameraPreview from "../CameraPreview";
 
-const QuizPlaying = ({
+const QuizPlaying = React.memo(({
   quiz,
   questions,
   currentQuestionIndex,
@@ -28,21 +28,30 @@ const QuizPlaying = ({
 }) => {
   const question = questions[currentQuestionIndex];
 
+  const handleSelect = useCallback((optionIndex) => {
+    if (question) {
+      handleSelectOption(
+        question._id,
+        optionIndex,
+        question.questionType
+      );
+    }
+  }, [question, handleSelectOption]);
+
   if (!question) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
+      <CameraPreview
+        videoRef={videoRef}
+        cameraEnabled={cameraEnabled}
+      />
 
       {/* Header */}
-
-      <div className="border rounded-xl p-4 flex justify-between items-center bg-card">
-
-        <div>
-
-          <h2 className="text-xl font-bold">
-
+      <div className="sticky top-0 z-40 flex items-center justify-between gap-4 rounded-lg border bg-card/95 p-4 pr-36 shadow-sm backdrop-blur sm:pr-52">
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-bold sm:text-xl">
             {quiz.title}
-
           </h2>
 
           <p className="text-sm text-muted-foreground">
@@ -54,7 +63,7 @@ const QuizPlaying = ({
 
         </div>
 
-        <div className="flex items-center gap-2 text-red-500 font-bold">
+        <div className="flex shrink-0 items-center gap-2 font-bold text-red-500">
 
           <Clock size={20} />
 
@@ -73,13 +82,7 @@ const QuizPlaying = ({
         selectedAnswers={
           selectedAnswers[question._id] || []
         }
-        onSelectOption={(optionIndex) =>
-          handleSelectOption(
-            question._id,
-            optionIndex,
-            question.questionType
-          )
-        }
+        onSelectOption={handleSelect}
       />
 
       {/* Navigation */}
@@ -144,15 +147,10 @@ const QuizPlaying = ({
 
       </div>
 
-      {/* Camera */}
-
-      <CameraPreview
-        videoRef={videoRef}
-        cameraEnabled={cameraEnabled}
-      />
-
     </div>
   );
-};
+});
+
+QuizPlaying.displayName = "QuizPlaying";
 
 export default QuizPlaying;

@@ -40,8 +40,6 @@ function SignupPage() {
   const handleFormSubmit = async (event) => {
     //form submit logic
     event.preventDefault();
-    //
-    console.log(formData);
     //validations
     if (
       formData.email === "" ||
@@ -63,10 +61,8 @@ function SignupPage() {
         name: "",
         password: "",
       });
-      console.log(responseData);
       navigate("/login");
     } catch (error) {
-      console.log(error.response);
       setError(error.response.data.message);
       toast.error(error.response.data.message);
     } finally {

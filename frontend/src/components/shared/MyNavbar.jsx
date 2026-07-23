@@ -11,7 +11,6 @@ function MyNavbar() {
   const navigate = useNavigate();
 
   const toggleTheme = () => {
-    console.log("Changing theme");
     setTheme(theme === "dark" ? "light" : "dark");
   };
 

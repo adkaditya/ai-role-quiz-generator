@@ -41,8 +41,6 @@ function LoginPage() {
   const handleFormSubmit = async (event) => {
     //form submit logic
     event.preventDefault();
-    //
-    console.log(loginData);
     //validations
     if (loginData.email === "" || loginData.password === "") {
       setError("All fields are required!");
@@ -52,7 +50,6 @@ function LoginPage() {
     try {
       setLoading(true);
       const responseData = await loginUser(loginData);
-      console.log(responseData);
       toast.success("Login successful!");
       login(responseData.user, responseData.accessToken);
       //data clean form
@@ -62,7 +59,6 @@ function LoginPage() {
       });
       navigate("/dashboard");
     } catch (error) {
-      console.log(error.response);
       setError(error.response.data.message);
       toast.error(error.response.data.message);
     } finally {

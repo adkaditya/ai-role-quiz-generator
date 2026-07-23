@@ -1,103 +1,107 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { VIOLATIONS } from "../constants/violationTypes";
 
-const useProctoring = ({ enabled, onViolation }) => {
+const useProctoring = ({
+  enabled,
+  onViolation,
+  isEnteringFullscreenRef,
+  isWarningActiveRef,
+}) => {
+  const onViolationRef = useRef(onViolation);
+
+  useEffect(() => {
+    onViolationRef.current = onViolation;
+  });
+
   useEffect(() => {
     if (!enabled) return;
+
+    const shouldIgnore = () => {
+      return !enabled || (isWarningActiveRef && isWarningActiveRef.current);
+    };
 
     // ==========================
     // Fullscreen Exit Detection
     // ==========================
     const handleFullscreenChange = () => {
-      setTimeout(() => {
-        if (!document.fullscreenElement) {
-          onViolation?.(VIOLATIONS.FULLSCREEN);
-        }
-      }, 150);
-    };
+      if (document.fullscreenElement) {
+        isEnteringFullscreenRef.current = false;
+        return;
+      }
 
+      if (shouldIgnore()) return;
+      onViolationRef.current?.(VIOLATIONS.FULLSCREEN);
+    };
     // ==========================
     // Tab Switching Detection
     // ==========================
     const handleVisibilityChange = () => {
+      if (shouldIgnore()) return;
       if (document.hidden) {
-        onViolation?.(VIOLATIONS.TAB_SWITCH);
+        onViolationRef.current?.(VIOLATIONS.TAB_SWITCH);
       }
+    };
+
+    // ==========================
+    // Focus Loss Detection
+    // ==========================
+    const handleBlur = () => {
+      if (shouldIgnore()) return;
+      onViolationRef.current?.(VIOLATIONS.TAB_SWITCH);
     };
 
     // ==========================
     // Keyboard Detection
     // ==========================
     const handleKeyDown = (event) => {
+      if (shouldIgnore()) return;
       const key = event.key.toLowerCase();
       const isModifierPressed = event.ctrlKey || event.metaKey;
 
-      // F12
+      if (key === "escape") {
+        onViolationRef.current?.(VIOLATIONS.FULLSCREEN);
+        return;
+      }
+
       if (event.key === "F12") {
         event.preventDefault();
-        onViolation?.(VIOLATIONS.DEVTOOLS);
+        onViolationRef.current?.(VIOLATIONS.DEVTOOLS);
         return;
       }
 
-      // Ctrl + Shift + I
-      if (
-        isModifierPressed &&
-        event.shiftKey &&
-        key === "i"
-      ) {
+      if (isModifierPressed && event.shiftKey && key === "i") {
         event.preventDefault();
-        onViolation?.(VIOLATIONS.DEVTOOLS);
+        onViolationRef.current?.(VIOLATIONS.DEVTOOLS);
         return;
       }
 
-      // Ctrl + Shift + J
-      if (
-        isModifierPressed &&
-        event.shiftKey &&
-        key === "j"
-      ) {
+      if (isModifierPressed && event.shiftKey && key === "j") {
         event.preventDefault();
-        onViolation?.(VIOLATIONS.DEVTOOLS);
+        onViolationRef.current?.(VIOLATIONS.DEVTOOLS);
         return;
       }
 
-      // Ctrl + U
-      if (
-        isModifierPressed &&
-        key === "u"
-      ) {
+      if (isModifierPressed && key === "u") {
         event.preventDefault();
-        onViolation?.(VIOLATIONS.DEVTOOLS);
+        onViolationRef.current?.(VIOLATIONS.DEVTOOLS);
         return;
       }
 
-      // Copy
-      if (
-        isModifierPressed &&
-        key === "c"
-      ) {
+      if (isModifierPressed && key === "c") {
         event.preventDefault();
-        onViolation?.(VIOLATIONS.COPY);
+        onViolationRef.current?.(VIOLATIONS.COPY);
         return;
       }
 
-      // Paste
-      if (
-        isModifierPressed &&
-        key === "v"
-      ) {
+      if (isModifierPressed && key === "v") {
         event.preventDefault();
-        onViolation?.(VIOLATIONS.PASTE);
+        onViolationRef.current?.(VIOLATIONS.PASTE);
         return;
       }
 
-      // Cut
-      if (
-        isModifierPressed &&
-        key === "x"
-      ) {
+      if (isModifierPressed && key === "x") {
         event.preventDefault();
-        onViolation?.(VIOLATIONS.CUT);
+        onViolationRef.current?.(VIOLATIONS.CUT);
         return;
       }
     };
@@ -106,68 +110,75 @@ const useProctoring = ({ enabled, onViolation }) => {
     // Right Click Detection
     // ==========================
     const handleContextMenu = (event) => {
+      if (shouldIgnore()) return;
       event.preventDefault();
-      onViolation?.(VIOLATIONS.RIGHT_CLICK);
+      onViolationRef.current?.(VIOLATIONS.RIGHT_CLICK);
+    };
+
+    // ==========================
+    // Clipboard Action Detection
+    // ==========================
+    const handleCopy = (event) => {
+      if (shouldIgnore()) return;
+      event.preventDefault();
+      onViolationRef.current?.(VIOLATIONS.COPY);
+    };
+
+    const handlePaste = (event) => {
+      if (shouldIgnore()) return;
+      event.preventDefault();
+      onViolationRef.current?.(VIOLATIONS.PASTE);
+    };
+
+    const handleCut = (event) => {
+      if (shouldIgnore()) return;
+      event.preventDefault();
+      onViolationRef.current?.(VIOLATIONS.CUT);
+    };
+
+    // ==========================
+    // DevTools Resize Detection
+    // ==========================
+    const handleResize = () => {
+      if (shouldIgnore()) return;
+      if (document.fullscreenElement) {
+        const threshold = 160;
+        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+        if (widthThreshold || heightThreshold) {
+          onViolationRef.current?.(VIOLATIONS.DEVTOOLS);
+        }
+      }
     };
 
     // ==========================
     // Register Events
     // ==========================
-    document.addEventListener(
-      "fullscreenchange",
-      handleFullscreenChange
-    );
-
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange
-    );
-
-    window.addEventListener(
-      "blur",
-      handleVisibilityChange
-    );
-
-    document.addEventListener(
-      "keydown",
-      handleKeyDown
-    );
-
-    document.addEventListener(
-      "contextmenu",
-      handleContextMenu
-    );
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("paste", handlePaste);
+    document.addEventListener("cut", handleCut);
+    window.addEventListener("resize", handleResize);
 
     // ==========================
     // Cleanup
     // ==========================
     return () => {
-      document.removeEventListener(
-        "fullscreenchange",
-        handleFullscreenChange
-      );
-
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      );
-
-      window.removeEventListener(
-        "blur",
-        handleVisibilityChange
-      );
-
-      document.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
-
-      document.removeEventListener(
-        "contextmenu",
-        handleContextMenu
-      );
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("paste", handlePaste);
+      document.removeEventListener("cut", handleCut);
+      window.removeEventListener("resize", handleResize);
     };
-  }, [enabled, onViolation]);
+  }, [enabled, isEnteringFullscreenRef, isWarningActiveRef]);
 };
 
 export default useProctoring;
