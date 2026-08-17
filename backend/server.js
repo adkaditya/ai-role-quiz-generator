@@ -23,7 +23,6 @@ const app = express();
 // DATABASE CONNECTION
 // ======================================================
 
-// MongoDB connection
 import "./utils/db.js";
 
 // ======================================================
@@ -50,9 +49,8 @@ import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
 // CORS CONFIGURATION
 // ======================================================
 
-// Production frontend + local development URLs
 const allowedOrigins = [
-  // Vercel production frontend
+  // Production frontend
   "https://ai-role-quiz-generator.vercel.app",
 
   // Local frontend
@@ -62,18 +60,15 @@ const allowedOrigins = [
   "http://localhost:5176",
 ];
 
-// CORS middleware
 app.use(
   cors({
-    // Allow only our frontend origins
     origin: function (origin, callback) {
-      // Postman / curl / server-to-server requests
-      // normally don't send an Origin header
+      // Postman / curl / server-to-server request
       if (!origin) {
         return callback(null, true);
       }
 
-      // Check whether frontend is allowed
+      // Check allowed frontend
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -83,10 +78,8 @@ app.use(
       return callback(new Error("Not allowed by CORS"));
     },
 
-    // Allow cookies/auth credentials
     credentials: true,
 
-    // Allowed HTTP methods
     methods: [
       "GET",
       "POST",
@@ -96,7 +89,6 @@ app.use(
       "OPTIONS",
     ],
 
-    // Allowed request headers
     allowedHeaders: [
       "Origin",
       "X-Requested-With",
@@ -105,7 +97,6 @@ app.use(
       "Authorization",
     ],
 
-    // Preflight success response
     optionsSuccessStatus: 204,
   })
 );
@@ -114,55 +105,64 @@ app.use(
 // BODY PARSER
 // ======================================================
 
-// JSON request body read karne ke liye
 app.use(express.json());
 
 // ======================================================
 // STATIC FILES
 // ======================================================
 
-// Uploaded files ko serve karne ke liye
 app.use("/uploads", express.static("uploads"));
 
 // ======================================================
-// API ROUTES
+// TEST ROUTE
 // ======================================================
 
-// Authentication routes
-// /api/v1/auth/register
-// /api/v1/auth/login
-// /api/v1/auth/verify-email
+app.get("/test", (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "Backend is working correctly 🚀",
+  });
+});
+
+// ======================================================
+// AUTH ROUTES
+// ======================================================
+
+// Register
+// POST /api/v1/auth/register
+
+// Login
+// POST /api/v1/auth/login
+
+// Verify Email
+// POST /api/v1/auth/verify-email
+
 app.use("/api/v1/auth", authRouter);
 
-// Proctoring / violations
+// ======================================================
+// OTHER API ROUTES
+// ======================================================
+
 app.use("/api/v1/violations", violationRouter);
 
-// Category routes
 app.use("/api/v1", categoryRouter);
 
-// Quiz routes
 app.use("/api/v1", quizRouter);
 
-// Question routes
 app.use("/api/v1", questionRouter);
 
-// Attempt routes
 app.use("/api/v1", attemptRouter);
 
-// Leaderboard routes
 app.use("/api/v1", leaderboardRouter);
 
-// User routes
 app.use("/api/v1", userRouter);
 
-// AI routes
 app.use("/api/v1/ai", aiRouter);
 
 // ======================================================
 // ROOT ROUTE
 // ======================================================
 
-// Backend running check karne ke liye
 app.get("/", (req, res) => {
   return res.status(200).json({
     success: true,
@@ -174,7 +174,6 @@ app.get("/", (req, res) => {
 // 404 ROUTE
 // ======================================================
 
-// Agar koi API route exist nahi karta
 app.use((req, res) => {
   return res.status(404).json({
     success: false,
