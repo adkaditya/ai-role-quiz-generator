@@ -2,18 +2,22 @@ import axios from "axios";
 
 export const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  // baseURL: "https://ai-role-quiz-generator.onrender.com/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-axiosClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+axiosClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-
-  return config;
-});
+);
