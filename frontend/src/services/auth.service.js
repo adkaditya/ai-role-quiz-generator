@@ -1,28 +1,84 @@
-import { axiosClient } from "../lib/apiConfig"
+import { axiosClient } from "../lib/apiConfig";
 
-export const signUpUser=async(userData)=>{
-    //signup logic
-    const response=await axiosClient.post('/auth/register',userData)
-    return response.data
-}
+// ======================================================
+// REGISTER USER
+// ======================================================
 
-export const loginUser=async(loginData)=>{
-    //login logic
-    const response=await axiosClient.post('/auth/login',loginData)
-    return response.data
-}
+export const signUpUser = async (userData) => {
+  // Backend:
+  // POST /api/v1/auth/register
+
+  const response = await axiosClient.post(
+    "/auth/register",
+    userData
+  );
+
+  return response.data;
+};
+
+// ======================================================
+// LOGIN USER
+// ======================================================
+
+export const loginUser = async (loginData) => {
+  // Backend:
+  // POST /api/v1/auth/login
+
+  const response = await axiosClient.post(
+    "/auth/login",
+    loginData
+  );
+
+  return response.data;
+};
+
+// ======================================================
+// UPDATE PROFILE
+// ======================================================
 
 export const updateProfile = async (profileData) => {
-  const response = await axiosClient.put("/users/profile", profileData);
+  // Backend:
+  // PUT /api/v1/users/profile
+
+  const response = await axiosClient.put(
+    "/users/profile",
+    profileData
+  );
+
   return response.data;
 };
+
+// ======================================================
+// UPDATE PASSWORD
+// ======================================================
 
 export const updatePassword = async (passwordData) => {
-  const response = await axiosClient.put("/users/password", passwordData);
+  // Backend:
+  // PUT /api/v1/users/password
+
+  const response = await axiosClient.put(
+    "/users/password",
+    passwordData
+  );
+
   return response.data;
 };
 
+// ======================================================
+// CHANGE USER ROLE
+// ======================================================
+
 export const changeUserRole = async (userId, roleName) => {
-  const response = await axiosClient.post("/auth/change-user-role", { userId, role: roleName });
+  // Backend route:
+  // PATCH /api/v1/auth/change-role
+
+  const response = await axiosClient.patch(
+    "/auth/change-role",
+    {
+      userId,
+      role: roleName,
+    }
+  );
+
   return response.data;
 };
