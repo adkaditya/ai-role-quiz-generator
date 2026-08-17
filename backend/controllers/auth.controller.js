@@ -3,6 +3,7 @@ import User from "../models/user.model.js";
 import {
   generateToken,
   registerUserService,
+  verifyEmailService,
 } from "../services/auth.service.js";
 
 // ==========================
@@ -11,12 +12,14 @@ import {
 export const registerUser = async (req, res) => {
   try {
     const result = await registerUserService(req.body);
-
-    return res.status(201).json({
-      status: "success",
-      message: "User created successfully",
-      data: result,
-    });
+return res.status(201).json({
+  status: "success",
+  message: "Registration successful. Please check your email for the verification OTP.",
+  data: {
+    email: result.email,
+    isEmailVerified: result.isEmailVerified,
+  },
+});
   } catch (error) {
     console.error("REGISTER ERROR:", error);
 
@@ -47,15 +50,33 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    const isMatch = await user.comparePassword(password);
+const isMatch = await user.comparePassword(password);
 
-    if (!isMatch) {
-      return res.status(404).json({
-        message: "Invalid Email or Password",
-      });
-    }
+if (!isMatch) {
+  return res.status(401).json({
+    status: "error",
+    message: "Invalid Email or Password",
+  });
+}
 
-    const accessToken = await generateToken(user._id);
+// ==========================================
+// Check Email Verification
+// ==========================================
+
+// Agar user ne email verify nahi kiya hai
+// to login allow nahi karenge
+if (!user.isEmailVerified) {
+  return res.status(403).json({
+    status: "error",
+    message: "Please verify your email before login",
+  });
+}
+
+// ==========================================
+// Generate JWT Token
+// ==========================================
+
+const accessToken = await generateToken(user._id);
 
     return res.status(200).json({
       status: "success",
@@ -132,6 +153,39 @@ export const changeUserRole = async (req, res) => {
     console.error("CHANGE ROLE ERROR:", error);
 
     return res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+// ==========================================
+// Verify Email
+// ==========================================
+
+export const verifyEmail = async (req, res) => {
+  try {
+    // Frontend se email aur OTP receive kar rahe hain
+    const { email, otp } = req.body;
+
+    // Basic validation
+    if (!email || !otp) {
+      return res.status(400).json({
+        status: "error",
+        message: "Email and OTP are required",
+      });
+    }
+
+    // OTP verification service ko call karo
+    await verifyEmailService(email, otp);
+
+    return res.status(200).json({
+      status: "success",
+      message: "Email verified successfully",
+    });
+  } catch (error) {
+    console.error("VERIFY EMAIL ERROR:", error);
+
+    return res.status(400).json({
+      status: "error",
       message: error.message,
     });
   }

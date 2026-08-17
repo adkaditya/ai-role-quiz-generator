@@ -1,21 +1,52 @@
-import express from "express";
-import {
-  changeUserRole,
-  deleteUser,
-  loginUser,
-  registerUser,
-} from "../controllers/auth.controller.js";
-import { authMiddleware } from "../middlewares/auth.middleware.js";
-import { roleCheckMiddleware } from "../middlewares/roleCheckMiddleware.js";
-const authRouter = express.Router();
-authRouter.post("/register", registerUser);
-authRouter.post("/login", loginUser);
-authRouter.post(
-  "/change-user-role",
-  authMiddleware,
-  roleCheckMiddleware,
-  changeUserRole
-);
-authRouter.delete("/delete", authMiddleware, roleCheckMiddleware, deleteUser);
+// ==========================================
+// Auth Routes
+// ==========================================
 
-export default authRouter;
+// Express Router import karo
+import { Router } from "express";
+
+// Authentication controllers import karo
+import {
+  registerUser,
+  loginUser,
+  deleteUser,
+  changeUserRole,
+  verifyEmail,
+} from "../controllers/auth.controller.js";
+
+// Router ka instance create karo
+const router = Router();
+
+// ==========================================
+// Authentication Routes
+// ==========================================
+
+// Register new user
+// POST /api/v1/auth/register
+router.post("/register", registerUser);
+
+// Login existing user
+// POST /api/v1/auth/login
+router.post("/login", loginUser);
+
+// Verify email using OTP
+// POST /api/v1/auth/verify-email
+router.post("/verify-email", verifyEmail);
+
+// ==========================================
+// User Management Routes
+// ==========================================
+
+// Delete user
+// POST /api/v1/auth/delete-user
+router.delete("/delete-user", deleteUser);
+
+// Change user role
+// POST /api/v1/auth/change-role
+router.patch("/change-role", changeUserRole);
+
+// ==========================================
+// Export Router
+// ==========================================
+
+export default router;
