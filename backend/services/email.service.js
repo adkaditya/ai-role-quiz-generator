@@ -1,46 +1,12 @@
-import nodemailer from "nodemailer";
-
 // ======================================================
-// EMAIL TRANSPORTER
+// RESEND EMAIL SERVICE
 // ======================================================
 
-// Gmail SMTP configuration
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+// Resend SDK
+import { Resend } from "resend";
 
-  // Port 587 = TLS/STARTTLS
-  port: 587,
-
-  // 587 ke saath false
-  secure: false,
-
-  auth: {
-    // Render Environment Variables se values aayengi
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-
-  // Connection timeout
-  connectionTimeout: 10000,
-
-  // Socket timeout
-  socketTimeout: 10000,
-
-  // Greeting timeout
-  greetingTimeout: 10000,
-});
-
-// ======================================================
-// VERIFY SMTP CONNECTION
-// ======================================================
-
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ EMAIL SMTP ERROR:", error.message);
-  } else {
-    console.log("✅ Email SMTP server is ready");
-  }
-});
+// Resend API key .env / Render Environment Variables se
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ======================================================
 // SEND VERIFICATION OTP
@@ -48,26 +14,27 @@ transporter.verify((error, success) => {
 
 export const sendVerificationEmail = async (email, otp) => {
   try {
-    const mailOptions = {
-      // Sender
-      from: `"IntelliQuiz" <${process.env.EMAIL_USER}>`,
+    const { data, error } = await resend.emails.send({
+      // Resend testing ke liye ye sender use kar sakte ho
+      from: "IntelliQuiz <onboarding@resend.dev>",
 
-      // Receiver
-      to: email,
+      // User ka email
+      to: [email],
 
-      // Subject
+      // Email subject
       subject: "Verify Your IntelliQuiz Account",
 
-      // HTML Email
+      // Email HTML
       html: `
         <div
           style="
             font-family: Arial, sans-serif;
             max-width: 600px;
-            margin: auto;
+            margin: 40px auto;
             padding: 30px;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
+            background: #ffffff;
           "
         >
 
@@ -114,17 +81,25 @@ export const sendVerificationEmail = async (email, otp) => {
 
         </div>
       `,
-    };
+    });
 
-    // Send email
-    const info = await transporter.sendMail(mailOptions);
+    // Resend API error
+    if (error) {
+      console.error("❌ RESEND ERROR:", error);
 
-    console.log("✅ Verification email sent:", info.messageId);
+      throw new Error(
+        error.message || "Unable to send verification email"
+      );
+    }
 
-    return info;
+    console.log("✅ Verification email sent:", data?.id);
+
+    return data;
   } catch (error) {
     console.error("❌ EMAIL SEND ERROR:", error);
 
-    throw new Error("Unable to send verification email");
+    throw new Error(
+      error.message || "Unable to send verification email"
+    );
   }
 };
