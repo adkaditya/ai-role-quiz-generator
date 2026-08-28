@@ -50,10 +50,13 @@ import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
 // ======================================================
 
 const allowedOrigins = [
-  // Production frontend
+  // Production Vercel frontend
+  "https://ai-role-quiz-generator-eight.vercel.app",
+
+  // Old/other Vercel frontend URL
   "https://ai-role-quiz-generator.vercel.app",
 
-  // Local frontend
+  // Local development
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
@@ -63,12 +66,13 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Postman / curl / server-to-server request
+      // Allow requests without an Origin
+      // Example: Postman, curl, server-to-server
       if (!origin) {
         return callback(null, true);
       }
 
-      // Check allowed frontend
+      // Allow known frontend origins
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -107,6 +111,8 @@ app.use(
 
 app.use(express.json());
 
+app.use(express.urlencoded({ extended: true }));
+
 // ======================================================
 // STATIC FILES
 // ======================================================
@@ -128,13 +134,8 @@ app.get("/test", (req, res) => {
 // AUTH ROUTES
 // ======================================================
 
-// Register
 // POST /api/v1/auth/register
-
-// Login
 // POST /api/v1/auth/login
-
-// Verify Email
 // POST /api/v1/auth/verify-email
 
 app.use("/api/v1/auth", authRouter);
