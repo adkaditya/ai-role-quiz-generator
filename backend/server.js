@@ -50,10 +50,10 @@ import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
 // ======================================================
 
 const allowedOrigins = [
-  // Production Vercel frontend
+  // Current production Vercel frontend
   "https://ai-role-quiz-generator-eight.vercel.app",
 
-  // Old/other Vercel frontend URL
+  // Previous Vercel frontend URL
   "https://ai-role-quiz-generator.vercel.app",
 
   // Local development
@@ -63,47 +63,59 @@ const allowedOrigins = [
   "http://localhost:5176",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests without an Origin
-      // Example: Postman, curl, server-to-server
-      if (!origin) {
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests without an Origin
+    // Example: Postman, curl, server-to-server
+    if (!origin) {
+      return callback(null, true);
+    }
 
-      // Allow known frontend origins
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    // Allow only known frontend origins
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      console.log("Blocked CORS Origin:", origin);
+    console.log("Blocked CORS Origin:", origin);
 
-      return callback(new Error("Not allowed by CORS"));
-    },
+    return callback(new Error("Not allowed by CORS"));
+  },
 
-    credentials: true,
+  // Allow cookies/auth credentials
+  credentials: true,
 
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
+  // Allowed HTTP methods
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+  ],
 
-    allowedHeaders: [
-      "Origin",
-      "X-Requested-With",
-      "Content-Type",
-      "Accept",
-      "Authorization",
-    ],
+  // Allowed request headers
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+  ],
 
-    optionsSuccessStatus: 204,
-  })
-);
+  // Response for OPTIONS preflight
+  optionsSuccessStatus: 204,
+};
+
+// ======================================================
+// CORS MIDDLEWARE
+// ======================================================
+
+// Normal API requests
+app.use(cors(corsOptions));
+
+// Explicitly handle CORS preflight requests
+app.options("*", cors(corsOptions));
 
 // ======================================================
 // BODY PARSER
@@ -134,8 +146,13 @@ app.get("/test", (req, res) => {
 // AUTH ROUTES
 // ======================================================
 
+// Register
 // POST /api/v1/auth/register
+
+// Login
 // POST /api/v1/auth/login
+
+// Verify Email
 // POST /api/v1/auth/verify-email
 
 app.use("/api/v1/auth", authRouter);
