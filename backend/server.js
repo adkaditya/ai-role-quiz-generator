@@ -50,10 +50,7 @@ import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
 // ======================================================
 
 const allowedOrigins = [
-  // Current production Vercel frontend
-  "https://ai-role-quiz-generator-eight.vercel.app",
-
-  // Previous Vercel frontend URL
+  // Production Vercel frontend
   "https://ai-role-quiz-generator.vercel.app",
 
   // Local development
@@ -65,20 +62,29 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests without an Origin
+    // Allow requests without Origin
     // Example: Postman, curl, server-to-server
     if (!origin) {
       return callback(null, true);
     }
 
-    // Allow only known frontend origins
+    // Allow exact production/local origins
     if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow Vercel preview deployments
+    // Example:
+    // https://ai-role-quiz-generator-xxxx.vercel.app
+    if (origin.endsWith(".vercel.app")) {
       return callback(null, true);
     }
 
     console.log("Blocked CORS Origin:", origin);
 
-    return callback(new Error("Not allowed by CORS"));
+    // Do not throw an error here.
+    // Simply reject the origin.
+    return callback(null, false);
   },
 
   // Allow cookies/auth credentials
@@ -103,7 +109,7 @@ const corsOptions = {
     "Authorization",
   ],
 
-  // Response for OPTIONS preflight
+  // Successful preflight response
   optionsSuccessStatus: 204,
 };
 
@@ -111,18 +117,13 @@ const corsOptions = {
 // CORS MIDDLEWARE
 // ======================================================
 
-// Normal API requests
 app.use(cors(corsOptions));
-
-// Explicitly handle CORS preflight requests
-app.options("*", cors(corsOptions));
 
 // ======================================================
 // BODY PARSER
 // ======================================================
 
 app.use(express.json());
-
 app.use(express.urlencoded({ extended: true }));
 
 // ======================================================
@@ -146,13 +147,8 @@ app.get("/test", (req, res) => {
 // AUTH ROUTES
 // ======================================================
 
-// Register
 // POST /api/v1/auth/register
-
-// Login
 // POST /api/v1/auth/login
-
-// Verify Email
 // POST /api/v1/auth/verify-email
 
 app.use("/api/v1/auth", authRouter);
