@@ -1,174 +1,435 @@
+// ======================================================
+// AUTH SERVICE
+// ======================================================
+
 import Role from "../models/role.model.js";
 import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 
-// OTP generate karne wala function
 import { generateOTP } from "../utils/generateOTP.js";
-
-// Email bhejne wala function
 import { sendVerificationEmail } from "./email.service.js";
 
-// ==========================================
-// Register User
-// ==========================================
+// ======================================================
+// REGISTER USER
+// ======================================================
 
 export const registerUserService = async (data) => {
-  // Frontend se name, email aur password receive kar rahe hain
-  const { name, email, password } = data;
+  try {
+    const { name, email, password } = data;
 
-  // ------------------------------------------
-  // Check: Kya user already exist karta hai?
-  // ------------------------------------------
+    // ------------------------------------------
+    // Validation
+    // ------------------------------------------
 
-  const existingUser = await User.findOne({ email });
+    if (!name || !email || !password) {
+      throw new Error("Name, email and password are required");
+    }
 
-  if (existingUser) {
-    throw new Error("User already exists");
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // ------------------------------------------
+    // Check Existing User
+    // ------------------------------------------
+
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    // ------------------------------------------
+    // If user already exists
+    // ------------------------------------------
+
+    if (existingUser) {
+      // Agar email already verified hai
+      if (existingUser.isEmailVerified) {
+        throw new Error("User already exists");
+      }
+
+      // ------------------------------------------
+      // Existing but unverified user
+      // New OTP generate karo
+      // ------------------------------------------
+
+      const verificationOTP = String(generateOTP());
+
+      const verificationOTPExpires = new Date(
+        Date.now() + 10 * 60 * 1000
+      );
+
+      existingUser.verificationOTP = verificationOTP;
+      existingUser.verificationOTPExpires =
+        verificationOTPExpires;
+
+      await existingUser.save();
+
+      // OTP email send karo
+      await sendVerificationEmail(
+        normalizedEmail,
+        verificationOTP
+      );
+
+      return existingUser;
+    }
+
+    // ------------------------------------------
+    // Generate OTP
+    // ------------------------------------------
+
+    const verificationOTP = String(generateOTP());
+
+    const verificationOTPExpires = new Date(
+      Date.now() + 10 * 60 * 1000
+    );
+
+    // ------------------------------------------
+    // Decide User Role
+    // ------------------------------------------
+
+    const userCount = await User.countDocuments();
+
+    const roleName = userCount === 0 ? "admin" : "user";
+
+    const role = await getOrCreateRole(roleName);
+
+    // ------------------------------------------
+    // Create User
+    // ------------------------------------------
+
+    const createdUser = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      password,
+
+      role: role._id,
+
+      isEmailVerified: false,
+
+      verificationOTP,
+
+      verificationOTPExpires,
+    });
+
+    // ------------------------------------------
+    // Send Verification Email
+    // ------------------------------------------
+
+    try {
+      await sendVerificationEmail(
+        normalizedEmail,
+        verificationOTP
+      );
+    } catch (emailError) {
+      console.error(
+        "EMAIL SEND ERROR:",
+        emailError
+      );
+
+      // Agar email send nahi hui
+      // to incomplete user ko delete kar do
+      await User.findByIdAndDelete(createdUser._id);
+
+      throw new Error(
+        "Registration failed because verification email could not be sent"
+      );
+    }
+
+    return createdUser;
+  } catch (error) {
+    console.error("REGISTER SERVICE ERROR:", error);
+
+    throw error;
   }
-
-  // ------------------------------------------
-  // Generate OTP
-  // ------------------------------------------
-
-  // 6 digit verification OTP generate hoga
-  const verificationOTP = generateOTP();
-
-  // OTP 10 minutes ke baad expire hoga
-  const verificationOTPExpires = new Date(
-    Date.now() + 10 * 60 * 1000
-  );
-
-  // ------------------------------------------
-  // Decide User Role
-  // ------------------------------------------
-
-  // Database mein total users count karo
-  const userCount = await User.countDocuments();
-
-  // Agar first user hai -> admin
-  // Otherwise -> normal user
-  const roleName = userCount === 0 ? "admin" : "user";
-
-  // Role find/create karo
-  const role = await getOrCreateRole(roleName);
-
-  // ------------------------------------------
-  // Create User
-  // ------------------------------------------
-
-  const createdUser = await User.create({
-    name,
-    email,
-    password,
-
-    // User ko role assign kar rahe hain
-    role: role._id,
-
-    // --------------------------------------
-    // Email Verification Data
-    // --------------------------------------
-
-    // Abhi email verify nahi hua hai
-    isEmailVerified: false,
-
-    // Generated OTP database mein save hoga
-    verificationOTP,
-
-    // OTP ki expiry time save hogi
-    verificationOTPExpires,
-  });
-
-  // ------------------------------------------
-  // Send OTP Email
-  // ------------------------------------------
-
-  // User ke email address par OTP bhejenge
-  await sendVerificationEmail(email, verificationOTP);
-
-  // Created user return karo
-  return createdUser;
 };
 
-// ==========================================
-// Get or Create Role
-// ==========================================
+// ======================================================
+// GET OR CREATE ROLE
+// ======================================================
 
 const getOrCreateRole = async (roleName) => {
-  // Database mein role search karo
-  const role = await Role.findOne({ name: roleName });
+  let role = await Role.findOne({
+    name: roleName,
+  });
 
-  // Agar role already exist karta hai
   if (role) {
     return role;
   }
 
-  // Agar role exist nahi karta to create karo
-  const newRole = await Role.create({
+  role = await Role.create({
     name: roleName,
   });
 
-  return newRole;
+  return role;
 };
 
-// ==========================================
-// Generate JWT Token
-// ==========================================
+// ======================================================
+// GENERATE JWT TOKEN
+// ======================================================
 
-export async function generateToken(userId) {
-  // User ID ke basis par JWT token generate hoga
+export const generateToken = async (userId) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is not configured");
+  }
+
   return jwt.sign(
     {
       id: userId,
     },
     process.env.JWT_SECRET,
     {
-      // Token 24 hours tak valid rahega
       expiresIn: "24h",
     }
   );
-}
+};
 
-// ==========================================
-// Verify Email OTP
-// ==========================================
+// ======================================================
+// VERIFY EMAIL OTP
+// ======================================================
 
-export const verifyEmailService = async (email, otp) => {
-  // Email ke basis par user find karo
-  const user = await User.findOne({ email });
+export const verifyEmailService = async (
+  email,
+  otp
+) => {
+  if (!email || !otp) {
+    throw new Error(
+      "Email and OTP are required"
+    );
+  }
 
-  // Agar user nahi mila
+  const normalizedEmail = email
+    .trim()
+    .toLowerCase();
+
+  const normalizedOTP = String(otp).trim();
+
+  // ------------------------------------------
+  // Find User
+  // ------------------------------------------
+
+  const user = await User.findOne({
+    email: normalizedEmail,
+  });
+
   if (!user) {
     throw new Error("User not found");
   }
 
-  // Agar email already verified hai
+  // ------------------------------------------
+  // Already Verified
+  // ------------------------------------------
+
   if (user.isEmailVerified) {
-    throw new Error("Email is already verified");
+    throw new Error(
+      "Email is already verified"
+    );
   }
 
-  // Check karo OTP match kar raha hai ya nahi
-  if (user.verificationOTP !== otp) {
+  // ------------------------------------------
+  // Check OTP Exists
+  // ------------------------------------------
+
+  if (!user.verificationOTP) {
+    throw new Error(
+      "No verification OTP found. Please request a new OTP."
+    );
+  }
+
+  // ------------------------------------------
+  // Check OTP
+  // ------------------------------------------
+
+  if (
+    String(user.verificationOTP).trim() !==
+    normalizedOTP
+  ) {
     throw new Error("Invalid OTP");
   }
 
-  // Check karo OTP expire to nahi ho gaya
+  // ------------------------------------------
+  // Check OTP Expiry
+  // ------------------------------------------
+
   if (
     !user.verificationOTPExpires ||
     user.verificationOTPExpires < new Date()
   ) {
-    throw new Error("OTP has expired");
+    throw new Error(
+      "OTP has expired. Please request a new OTP."
+    );
   }
 
-  // Email ko verified mark karo
+  // ------------------------------------------
+  // Verify Email
+  // ------------------------------------------
+
   user.isEmailVerified = true;
 
-  // OTP ko remove karo
-  // Verify hone ke baad OTP ki zarurat nahi hai
   user.verificationOTP = null;
+
   user.verificationOTPExpires = null;
 
-  // Changes database mein save karo
   await user.save();
+
+  return user;
+};
+
+// ======================================================
+// RESEND VERIFICATION OTP
+// ======================================================
+
+export const resendVerificationOTP = async (
+  email
+) => {
+  if (!email) {
+    throw new Error("Email is required");
+  }
+
+  const normalizedEmail = email
+    .trim()
+    .toLowerCase();
+
+  const user = await User.findOne({
+    email: normalizedEmail,
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (user.isEmailVerified) {
+    throw new Error(
+      "Email is already verified"
+    );
+  }
+
+  // ------------------------------------------
+  // Generate New OTP
+  // ------------------------------------------
+
+  const verificationOTP = String(generateOTP());
+
+  const verificationOTPExpires = new Date(
+    Date.now() + 10 * 60 * 1000
+  );
+
+  user.verificationOTP = verificationOTP;
+
+  user.verificationOTPExpires =
+    verificationOTPExpires;
+
+  await user.save();
+
+  // ------------------------------------------
+  // Send Email
+  // ------------------------------------------
+
+  await sendVerificationEmail(
+    normalizedEmail,
+    verificationOTP
+  );
+
+  return {
+    email: normalizedEmail,
+  };
+};
+
+// ======================================================
+// FORGOT PASSWORD OTP
+// ======================================================
+
+export const generatePasswordResetOTP = async (
+  email
+) => {
+  if (!email) {
+    throw new Error("Email is required");
+  }
+
+  const normalizedEmail = email
+    .trim()
+    .toLowerCase();
+
+  const user = await User.findOne({
+    email: normalizedEmail,
+  });
+
+  if (!user) {
+    throw new Error(
+      "No account found with this email"
+    );
+  }
+
+  const resetOTP = String(generateOTP());
+
+  const resetOTPExpires = new Date(
+    Date.now() + 10 * 60 * 1000
+  );
+
+  // NOTE:
+  // User model me ye fields add hone chahiye:
+  // resetPasswordOTP
+  // resetPasswordOTPExpires
+
+  user.resetPasswordOTP = resetOTP;
+
+  user.resetPasswordOTPExpires =
+    resetOTPExpires;
+
+  await user.save();
+
+  // Abhi verification email function use kar rahe hain.
+  // Baad me separate password reset email bana sakte hain.
+
+  await sendVerificationEmail(
+    normalizedEmail,
+    resetOTP
+  );
+
+  return {
+    email: normalizedEmail,
+  };
+};
+
+// ======================================================
+// VERIFY PASSWORD RESET OTP
+// ======================================================
+
+export const verifyPasswordResetOTP = async (
+  email,
+  otp
+) => {
+  if (!email || !otp) {
+    throw new Error(
+      "Email and OTP are required"
+    );
+  }
+
+  const normalizedEmail = email
+    .trim()
+    .toLowerCase();
+
+  const normalizedOTP = String(otp).trim();
+
+  const user = await User.findOne({
+    email: normalizedEmail,
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (
+    !user.resetPasswordOTP ||
+    String(user.resetPasswordOTP).trim() !==
+      normalizedOTP
+  ) {
+    throw new Error("Invalid OTP");
+  }
+
+  if (
+    !user.resetPasswordOTPExpires ||
+    user.resetPasswordOTPExpires < new Date()
+  ) {
+    throw new Error("OTP has expired");
+  }
 
   return user;
 };

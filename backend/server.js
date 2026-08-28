@@ -3,7 +3,6 @@
 // ======================================================
 
 import dotenv from "dotenv";
-
 dotenv.config();
 
 // ======================================================
@@ -49,11 +48,14 @@ import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
 // CORS CONFIGURATION
 // ======================================================
 
+// Allow:
+// 1. Main Vercel production URL
+// 2. All Vercel preview/deployment URLs of this project
+// 3. Local development URLs
+
 const allowedOrigins = [
-  // Production Vercel frontend
   "https://ai-role-quiz-generator.vercel.app",
 
-  // Local development
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
@@ -68,29 +70,32 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Allow exact production/local origins
+    // Allow exact production URL
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    // Allow Vercel preview deployments
-    // Example:
-    // https://ai-role-quiz-generator-xxxx.vercel.app
-    if (origin.endsWith(".vercel.app")) {
+    // Allow Vercel preview/deployment URLs
+    if (
+      /^https:\/\/ai-role-quiz-generator-[a-z0-9-]+\.vercel\.app$/i.test(
+        origin
+      )
+    ) {
+      return callback(null, true);
+    }
+
+    // Allow localhost on any port
+    if (/^http:\/\/localhost:\d+$/i.test(origin)) {
       return callback(null, true);
     }
 
     console.log("Blocked CORS Origin:", origin);
 
-    // Do not throw an error here.
-    // Simply reject the origin.
-    return callback(null, false);
+    return callback(new Error("Not allowed by CORS"));
   },
 
-  // Allow cookies/auth credentials
   credentials: true,
 
-  // Allowed HTTP methods
   methods: [
     "GET",
     "POST",
@@ -100,7 +105,6 @@ const corsOptions = {
     "OPTIONS",
   ],
 
-  // Allowed request headers
   allowedHeaders: [
     "Origin",
     "X-Requested-With",
@@ -109,7 +113,6 @@ const corsOptions = {
     "Authorization",
   ],
 
-  // Successful preflight response
   optionsSuccessStatus: 204,
 };
 
@@ -118,6 +121,9 @@ const corsOptions = {
 // ======================================================
 
 app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS preflight
+app.options(/.*/, cors(corsOptions));
 
 // ======================================================
 // BODY PARSER
@@ -140,6 +146,17 @@ app.get("/test", (req, res) => {
   return res.status(200).json({
     success: true,
     message: "Backend is working correctly 🚀",
+  });
+});
+
+// ======================================================
+// ROOT ROUTE
+// ======================================================
+
+app.get("/", (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "AI Role Quiz Backend is Running 🚀",
   });
 });
 
@@ -174,17 +191,6 @@ app.use("/api/v1", userRouter);
 app.use("/api/v1/ai", aiRouter);
 
 // ======================================================
-// ROOT ROUTE
-// ======================================================
-
-app.get("/", (req, res) => {
-  return res.status(200).json({
-    success: true,
-    message: "AI Role Quiz Backend is Running 🚀",
-  });
-});
-
-// ======================================================
 // 404 ROUTE
 // ======================================================
 
@@ -210,5 +216,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log("======================================");
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 PORT: ${PORT}`);
   console.log("======================================");
 });

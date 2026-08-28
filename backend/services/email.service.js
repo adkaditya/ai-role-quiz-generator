@@ -12,6 +12,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // SEND VERIFICATION OTP
 // ======================================================
 
+
 export const sendVerificationEmail = async (email, otp) => {
   try {
     const { data, error } = await resend.emails.send({
