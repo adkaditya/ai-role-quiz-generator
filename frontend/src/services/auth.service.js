@@ -1,13 +1,7 @@
 import { axiosClient } from "../lib/apiConfig";
 
-// ======================================================
-// REGISTER USER
-// ======================================================
-
+// REGISTER
 export const signUpUser = async (userData) => {
-  // Backend:
-  // POST /api/v1/auth/register
-
   const response = await axiosClient.post(
     "/auth/register",
     userData
@@ -16,14 +10,21 @@ export const signUpUser = async (userData) => {
   return response.data;
 };
 
-// ======================================================
-// LOGIN USER
-// ======================================================
+// VERIFY EMAIL OTP
+export const verifyEmail = async (email, otp) => {
+  const response = await axiosClient.post(
+    "/auth/verify-email",
+    {
+      email,
+      otp,
+    }
+  );
 
+  return response.data;
+};
+
+// LOGIN
 export const loginUser = async (loginData) => {
-  // Backend:
-  // POST /api/v1/auth/login
-
   const response = await axiosClient.post(
     "/auth/login",
     loginData
@@ -32,14 +33,18 @@ export const loginUser = async (loginData) => {
   return response.data;
 };
 
-// ======================================================
+// RESEND OTP
+export const resendOTP = async (email) => {
+  const response = await axiosClient.post(
+    "/auth/resend-otp",
+    { email }
+  );
+
+  return response.data;
+};
+
 // UPDATE PROFILE
-// ======================================================
-
 export const updateProfile = async (profileData) => {
-  // Backend:
-  // PUT /api/v1/users/profile
-
   const response = await axiosClient.put(
     "/users/profile",
     profileData
@@ -48,14 +53,8 @@ export const updateProfile = async (profileData) => {
   return response.data;
 };
 
-// ======================================================
 // UPDATE PASSWORD
-// ======================================================
-
 export const updatePassword = async (passwordData) => {
-  // Backend:
-  // PUT /api/v1/users/password
-
   const response = await axiosClient.put(
     "/users/password",
     passwordData
@@ -64,14 +63,8 @@ export const updatePassword = async (passwordData) => {
   return response.data;
 };
 
-// ======================================================
-// CHANGE USER ROLE
-// ======================================================
-
+// CHANGE ROLE
 export const changeUserRole = async (userId, roleName) => {
-  // Backend route:
-  // PATCH /api/v1/auth/change-role
-
   const response = await axiosClient.patch(
     "/auth/change-role",
     {

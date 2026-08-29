@@ -80,6 +80,16 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    resetPasswordOTP: {
+  type: String,
+  default: null,
+},
+
+resetPasswordOTPExpires: {
+  type: Date,
+  default: null,
+},
+
     // ==========================================
     // User Role
     // ==========================================

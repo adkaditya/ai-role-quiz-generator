@@ -1,52 +1,66 @@
 // ==========================================
-// Auth Routes
+// AUTH ROUTES
 // ==========================================
 
-// Express Router import karo
 import { Router } from "express";
 
-// Authentication controllers import karo
 import {
   registerUser,
   loginUser,
   deleteUser,
   changeUserRole,
   verifyEmail,
+  resendOTP,
+
 } from "../controllers/auth.controller.js";
 
-// Router ka instance create karo
 const router = Router();
 
 // ==========================================
-// Authentication Routes
+// REGISTER
+// POST /api/v1/auth/register
 // ==========================================
 
-// Register new user
-// POST /api/v1/auth/register
 router.post("/register", registerUser);
 
-// Login existing user
+// ==========================================
+// LOGIN
 // POST /api/v1/auth/login
+// ==========================================
+
 router.post("/login", loginUser);
 
-// Verify email using OTP
+// ==========================================
+// VERIFY EMAIL OTP
 // POST /api/v1/auth/verify-email
+// ==========================================
+
 router.post("/verify-email", verifyEmail);
 
 // ==========================================
-// User Management Routes
+// RESEND OTP
+// POST /api/v1/auth/resend-otp
 // ==========================================
 
-// Delete user
-// POST /api/v1/auth/delete-user
+router.post("/resend-otp", resendOTP);
+
+// ==========================================
+// DELETE USER
+// DELETE /api/v1/auth/delete-user
+// ==========================================
+
 router.delete("/delete-user", deleteUser);
 
-// Change user role
-// POST /api/v1/auth/change-role
+// ==========================================
+// CHANGE USER ROLE
+// PATCH /api/v1/auth/change-role
+// ==========================================
+
 router.patch("/change-role", changeUserRole);
 
 // ==========================================
-// Export Router
+// EXPORT
 // ==========================================
+
 
 export default router;

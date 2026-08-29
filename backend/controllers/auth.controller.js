@@ -4,6 +4,7 @@ import {
   generateToken,
   registerUserService,
   verifyEmailService,
+  resendVerificationOTP,
 } from "../services/auth.service.js";
 
 // ==========================
@@ -183,6 +184,38 @@ export const verifyEmail = async (req, res) => {
     });
   } catch (error) {
     console.error("VERIFY EMAIL ERROR:", error);
+
+    return res.status(400).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// ==========================================
+// RESEND OTP
+// ==========================================
+
+export const resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        status: "error",
+        message: "Email is required",
+      });
+    }
+
+    const result = await resendVerificationOTP(email);
+
+    return res.status(200).json({
+      status: "success",
+      message: "OTP sent successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("RESEND OTP ERROR:", error);
 
     return res.status(400).json({
       status: "error",

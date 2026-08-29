@@ -48,11 +48,6 @@ import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
 // CORS CONFIGURATION
 // ======================================================
 
-// Allow:
-// 1. Main Vercel production URL
-// 2. All Vercel preview/deployment URLs of this project
-// 3. Local development URLs
-
 const allowedOrigins = [
   "https://ai-role-quiz-generator.vercel.app",
 
@@ -70,7 +65,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Allow exact production URL
+    // Exact allowed origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
@@ -122,8 +117,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Explicitly handle OPTIONS preflight
-app.options(/.*/, cors(corsOptions));
 
 // ======================================================
 // BODY PARSER
@@ -167,6 +160,7 @@ app.get("/", (req, res) => {
 // POST /api/v1/auth/register
 // POST /api/v1/auth/login
 // POST /api/v1/auth/verify-email
+// POST /api/v1/auth/resend-otp
 
 app.use("/api/v1/auth", authRouter);
 
@@ -177,15 +171,10 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/violations", violationRouter);
 
 app.use("/api/v1", categoryRouter);
-
 app.use("/api/v1", quizRouter);
-
 app.use("/api/v1", questionRouter);
-
 app.use("/api/v1", attemptRouter);
-
 app.use("/api/v1", leaderboardRouter);
-
 app.use("/api/v1", userRouter);
 
 app.use("/api/v1/ai", aiRouter);
