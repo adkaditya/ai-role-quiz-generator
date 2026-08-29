@@ -99,21 +99,18 @@ export const registerUserService = async (data) => {
   // ======================================================
   // SEND OTP EMAIL
   // ======================================================
+try {
+  await sendVerificationEmail(
+    normalizedEmail,
+    verificationOTP
+  );
+} catch (emailError) {
+  console.error("EMAIL SEND ERROR:", emailError);
 
-  try {
-    await sendVerificationEmail(
-      normalizedEmail,
-      verificationOTP
-    );
-  } catch (emailError) {
-    console.error("EMAIL SEND ERROR:", emailError);
-
-    await User.findByIdAndDelete(createdUser._id);
-
-    throw new Error(
-      "Registration failed because verification email could not be sent"
-    );
-  }
+  throw new Error(
+    "OTP email could not be sent. Please try again later."
+  );
+}
 
   return createdUser;
 };
