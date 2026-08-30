@@ -1,31 +1,61 @@
 // ======================================================
-// RESEND EMAIL SERVICE
+// EMAIL SERVICE
 // ======================================================
 
-// Resend SDK
 import { Resend } from "resend";
 
-// Resend API key .env / Render Environment Variables se
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Resend only initialize when API key exists
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 // ======================================================
 // SEND VERIFICATION OTP
 // ======================================================
 
-
 export const sendVerificationEmail = async (email, otp) => {
   try {
-    const { data, error } = await resend.emails.send({
-      // Resend testing ke liye ye sender use kar sakte ho
-      from: "IntelliQuiz <onboarding@resend.dev>",
+    // ==================================================
+    // DEVELOPMENT MODE
+    // ==================================================
+    // Abhi domain ki zarurat nahi hai.
+    // OTP backend terminal mein show hoga.
+    // ==================================================
 
-      // User ka email
+    if (process.env.NODE_ENV !== "production") {
+      console.log("\n========================================");
+      console.log("🔐 INTELLIQUIZ DEVELOPMENT OTP");
+      console.log("📧 Email:", email);
+      console.log("🔢 OTP:", otp);
+      console.log("⏰ Valid for: 10 minutes");
+      console.log("========================================\n");
+
+      return {
+        id: "development-otp",
+        email,
+        otp,
+      };
+    }
+
+    // ==================================================
+    // PRODUCTION MODE
+    // ==================================================
+
+    if (!resend) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL ||
+      "IntelliQuiz <onboarding@resend.dev>";
+
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+
       to: [email],
 
-      // Email subject
       subject: "Verify Your IntelliQuiz Account",
 
-      // Email HTML
       html: `
         <div
           style="
@@ -69,8 +99,8 @@ export const sendVerificationEmail = async (email, otp) => {
           </p>
 
           <p style="color: #6b7280;">
-            If you did not create this account, you can safely ignore
-            this email.
+            If you did not create this account,
+            you can safely ignore this email.
           </p>
 
           <hr />
@@ -84,7 +114,6 @@ export const sendVerificationEmail = async (email, otp) => {
       `,
     });
 
-    // Resend API error
     if (error) {
       console.error("❌ RESEND ERROR:", error);
 
@@ -96,6 +125,7 @@ export const sendVerificationEmail = async (email, otp) => {
     console.log("✅ Verification email sent:", data?.id);
 
     return data;
+
   } catch (error) {
     console.error("❌ EMAIL SEND ERROR:", error);
 

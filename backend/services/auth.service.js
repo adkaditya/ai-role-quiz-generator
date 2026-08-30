@@ -15,7 +15,10 @@ import { sendVerificationEmail } from "./email.service.js";
 export const registerUserService = async (data) => {
   const { name, email, password } = data;
 
-  // Validation
+  // ------------------------------------------------------
+  // VALIDATION
+  // ------------------------------------------------------
+
   if (!name?.trim() || !email?.trim() || !password) {
     throw new Error("Name, email and password are required");
   }
@@ -26,7 +29,10 @@ export const registerUserService = async (data) => {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Check existing user
+  // ------------------------------------------------------
+  // CHECK EXISTING USER
+  // ------------------------------------------------------
+
   const existingUser = await User.findOne({
     email: normalizedEmail,
   });
@@ -41,7 +47,11 @@ export const registerUserService = async (data) => {
       throw new Error("User already exists");
     }
 
-    // Existing but unverified -> resend OTP
+    // ----------------------------------------------------
+    // EXISTING BUT UNVERIFIED
+    // Generate new OTP
+    // ----------------------------------------------------
+
     const verificationOTP = String(generateOTP());
 
     existingUser.verificationOTP = verificationOTP;
@@ -49,12 +59,36 @@ export const registerUserService = async (data) => {
       Date.now() + 10 * 60 * 1000
     );
 
+    // Update name/password if signup is retried
+    existingUser.name = name.trim();
+    existingUser.password = password;
+
     await existingUser.save();
 
-    await sendVerificationEmail(
-      normalizedEmail,
-      verificationOTP
-    );
+    // ----------------------------------------------------
+    // SEND OTP
+    // ----------------------------------------------------
+
+    try {
+      await sendVerificationEmail(
+        normalizedEmail,
+        verificationOTP
+      );
+
+      console.log(
+        `✅ Verification OTP sent to ${normalizedEmail}`
+      );
+    } catch (emailError) {
+      console.error(
+        "❌ EMAIL SEND ERROR:",
+        emailError.message
+      );
+
+      // Development fallback
+      console.log(
+        `🔐 DEVELOPMENT OTP for ${normalizedEmail}: ${verificationOTP}`
+      );
+    }
 
     return existingUser;
   }
@@ -70,11 +104,9 @@ export const registerUserService = async (data) => {
   );
 
   // ======================================================
-  // NORMAL USER ROLE
+  // GET USER ROLE
   // ======================================================
 
-  // Normal signup se hamesha user role milega.
-  // Admin ko baad mein manually/admin system se assign karenge.
   const role = await getOrCreateRole("user");
 
   // ======================================================
@@ -97,20 +129,29 @@ export const registerUserService = async (data) => {
   });
 
   // ======================================================
-  // SEND OTP EMAIL
+  // SEND VERIFICATION OTP
   // ======================================================
-try {
-  await sendVerificationEmail(
-    normalizedEmail,
-    verificationOTP
-  );
-} catch (emailError) {
-  console.error("EMAIL SEND ERROR:", emailError);
 
-  throw new Error(
-    "OTP email could not be sent. Please try again later."
-  );
-}
+  try {
+    await sendVerificationEmail(
+      normalizedEmail,
+      verificationOTP
+    );
+
+    console.log(
+      `✅ Verification OTP sent to ${normalizedEmail}`
+    );
+  } catch (emailError) {
+    console.error(
+      "❌ EMAIL SEND ERROR:",
+      emailError.message
+    );
+
+    // Development fallback
+    console.log(
+      `🔐 DEVELOPMENT OTP for ${normalizedEmail}: ${verificationOTP}`
+    );
+  }
 
   return createdUser;
 };
@@ -167,6 +208,10 @@ export const verifyEmailService = async (email, otp) => {
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedOTP = String(otp).trim();
 
+  // ------------------------------------------------------
+  // FIND USER
+  // ------------------------------------------------------
+
   const user = await User.findOne({
     email: normalizedEmail,
   });
@@ -175,9 +220,17 @@ export const verifyEmailService = async (email, otp) => {
     throw new Error("User not found");
   }
 
+  // ------------------------------------------------------
+  // ALREADY VERIFIED
+  // ------------------------------------------------------
+
   if (user.isEmailVerified) {
     throw new Error("Email is already verified");
   }
+
+  // ------------------------------------------------------
+  // OTP EXISTS?
+  // ------------------------------------------------------
 
   if (!user.verificationOTP) {
     throw new Error(
@@ -185,12 +238,20 @@ export const verifyEmailService = async (email, otp) => {
     );
   }
 
+  // ------------------------------------------------------
+  // CHECK OTP
+  // ------------------------------------------------------
+
   if (
     String(user.verificationOTP).trim() !==
     normalizedOTP
   ) {
     throw new Error("Invalid OTP");
   }
+
+  // ------------------------------------------------------
+  // CHECK OTP EXPIRY
+  // ------------------------------------------------------
 
   if (
     !user.verificationOTPExpires ||
@@ -201,10 +262,13 @@ export const verifyEmailService = async (email, otp) => {
     );
   }
 
-  // Mark email verified
+  // ------------------------------------------------------
+  // VERIFY EMAIL
+  // ------------------------------------------------------
+
   user.isEmailVerified = true;
 
-  // Remove OTP
+  // Remove verification OTP
   user.verificationOTP = null;
   user.verificationOTPExpires = null;
 
@@ -224,6 +288,10 @@ export const resendVerificationOTP = async (email) => {
 
   const normalizedEmail = email.trim().toLowerCase();
 
+  // ------------------------------------------------------
+  // FIND USER
+  // ------------------------------------------------------
+
   const user = await User.findOne({
     email: normalizedEmail,
   });
@@ -232,9 +300,17 @@ export const resendVerificationOTP = async (email) => {
     throw new Error("User not found");
   }
 
+  // ------------------------------------------------------
+  // ALREADY VERIFIED
+  // ------------------------------------------------------
+
   if (user.isEmailVerified) {
     throw new Error("Email is already verified");
   }
+
+  // ------------------------------------------------------
+  // GENERATE NEW OTP
+  // ------------------------------------------------------
 
   const verificationOTP = String(generateOTP());
 
@@ -247,10 +323,30 @@ export const resendVerificationOTP = async (email) => {
 
   await user.save();
 
-  await sendVerificationEmail(
-    normalizedEmail,
-    verificationOTP
-  );
+  // ------------------------------------------------------
+  // SEND OTP
+  // ------------------------------------------------------
+
+  try {
+    await sendVerificationEmail(
+      normalizedEmail,
+      verificationOTP
+    );
+
+    console.log(
+      `✅ Verification OTP resent to ${normalizedEmail}`
+    );
+  } catch (emailError) {
+    console.error(
+      "❌ RESEND OTP EMAIL ERROR:",
+      emailError.message
+    );
+
+    // Development fallback
+    console.log(
+      `🔐 DEVELOPMENT OTP for ${normalizedEmail}: ${verificationOTP}`
+    );
+  }
 
   return {
     email: normalizedEmail,
@@ -268,13 +364,23 @@ export const generatePasswordResetOTP = async (email) => {
 
   const normalizedEmail = email.trim().toLowerCase();
 
+  // ------------------------------------------------------
+  // FIND USER
+  // ------------------------------------------------------
+
   const user = await User.findOne({
     email: normalizedEmail,
   });
 
   if (!user) {
-    throw new Error("No account found with this email");
+    throw new Error(
+      "No account found with this email"
+    );
   }
+
+  // ------------------------------------------------------
+  // GENERATE RESET OTP
+  // ------------------------------------------------------
 
   const resetOTP = String(generateOTP());
 
@@ -287,10 +393,30 @@ export const generatePasswordResetOTP = async (email) => {
 
   await user.save();
 
-  await sendVerificationEmail(
-    normalizedEmail,
-    resetOTP
-  );
+  // ------------------------------------------------------
+  // SEND RESET OTP
+  // ------------------------------------------------------
+
+  try {
+    await sendVerificationEmail(
+      normalizedEmail,
+      resetOTP
+    );
+
+    console.log(
+      `✅ Password reset OTP sent to ${normalizedEmail}`
+    );
+  } catch (emailError) {
+    console.error(
+      "❌ PASSWORD RESET EMAIL ERROR:",
+      emailError.message
+    );
+
+    // Development fallback
+    console.log(
+      `🔐 DEVELOPMENT RESET OTP for ${normalizedEmail}: ${resetOTP}`
+    );
+  }
 
   return {
     email: normalizedEmail,
@@ -312,6 +438,10 @@ export const verifyPasswordResetOTP = async (
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedOTP = String(otp).trim();
 
+  // ------------------------------------------------------
+  // FIND USER
+  // ------------------------------------------------------
+
   const user = await User.findOne({
     email: normalizedEmail,
   });
@@ -320,6 +450,10 @@ export const verifyPasswordResetOTP = async (
     throw new Error("User not found");
   }
 
+  // ------------------------------------------------------
+  // CHECK OTP
+  // ------------------------------------------------------
+
   if (
     !user.resetPasswordOTP ||
     String(user.resetPasswordOTP).trim() !==
@@ -327,6 +461,10 @@ export const verifyPasswordResetOTP = async (
   ) {
     throw new Error("Invalid OTP");
   }
+
+  // ------------------------------------------------------
+  // CHECK EXPIRY
+  // ------------------------------------------------------
 
   if (
     !user.resetPasswordOTPExpires ||
