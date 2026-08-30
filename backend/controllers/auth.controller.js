@@ -13,18 +13,24 @@ import {
 export const registerUser = async (req, res) => {
   try {
     const result = await registerUserService(req.body);
-return res.status(201).json({
-  status: "success",
-  message: "Registration successful. Please check your email for the verification OTP.",
-  data: {
-    email: result.email,
-    isEmailVerified: result.isEmailVerified,
-  },
-});
+
+    return res.status(201).json({
+      status: "success",
+      message:
+        "Registration successful. Please verify your email with the OTP.",
+      data: {
+        email: result.email,
+        isEmailVerified: result.isEmailVerified,
+        developmentOTP: process.env.NODE_ENV !== "production"
+          ? result.verificationOTP
+          : undefined,
+      },
+    });
   } catch (error) {
     console.error("REGISTER ERROR:", error);
 
     return res.status(500).json({
+      status: "error",
       message: error.message,
     });
   }
@@ -33,51 +39,51 @@ return res.status(201).json({
 // ==========================
 // Login User
 // ==========================
+// ==========================
+// Login User
+// ==========================
+
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (!email?.trim() || !password) {
       return res.status(400).json({
+        status: "error",
         message: "Email and Password are required",
       });
     }
 
-    const user = await User.findOne({ email }).populate("role");
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+    }).populate("role");
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(401).json({
+        status: "error",
         message: "Invalid Email or Password",
       });
     }
 
-const isMatch = await user.comparePassword(password);
+    const isMatch = await user.comparePassword(password);
 
-if (!isMatch) {
-  return res.status(401).json({
-    status: "error",
-    message: "Invalid Email or Password",
-  });
-}
+    if (!isMatch) {
+      return res.status(401).json({
+        status: "error",
+        message: "Invalid Email or Password",
+      });
+    }
 
-// ==========================================
-// Check Email Verification
-// ==========================================
+    if (!user.isEmailVerified) {
+      return res.status(403).json({
+        status: "error",
+        message: "Please verify your email before login",
+      });
+    }
 
-// Agar user ne email verify nahi kiya hai
-// to login allow nahi karenge
-if (!user.isEmailVerified) {
-  return res.status(403).json({
-    status: "error",
-    message: "Please verify your email before login",
-  });
-}
-
-// ==========================================
-// Generate JWT Token
-// ==========================================
-
-const accessToken = await generateToken(user._id);
+    const accessToken = await generateToken(user._id);
 
     return res.status(200).json({
       status: "success",
@@ -85,10 +91,12 @@ const accessToken = await generateToken(user._id);
       accessToken,
       user,
     });
+
   } catch (error) {
     console.error("LOGIN ERROR:", error);
 
     return res.status(500).json({
+      status: "error",
       message: error.message,
     });
   }

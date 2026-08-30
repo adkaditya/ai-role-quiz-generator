@@ -1,13 +1,20 @@
 // ======================================================
-// EMAIL SERVICE
+// EMAIL SERVICE - GMAIL SMTP
 // ======================================================
 
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-// Resend only initialize when API key exists
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+// ======================================================
+// GMAIL TRANSPORTER
+// ======================================================
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 // ======================================================
 // SEND VERIFICATION OTP
@@ -15,45 +22,17 @@ const resend = process.env.RESEND_API_KEY
 
 export const sendVerificationEmail = async (email, otp) => {
   try {
-    // ==================================================
-    // DEVELOPMENT MODE
-    // ==================================================
-    // Abhi domain ki zarurat nahi hai.
-    // OTP backend terminal mein show hoga.
-    // ==================================================
-
-    if (process.env.NODE_ENV !== "production") {
-      console.log("\n========================================");
-      console.log("🔐 INTELLIQUIZ DEVELOPMENT OTP");
-      console.log("📧 Email:", email);
-      console.log("🔢 OTP:", otp);
-      console.log("⏰ Valid for: 10 minutes");
-      console.log("========================================\n");
-
-      return {
-        id: "development-otp",
-        email,
-        otp,
-      };
+    if (!process.env.GMAIL_USER) {
+      throw new Error("GMAIL_USER is not configured");
     }
 
-    // ==================================================
-    // PRODUCTION MODE
-    // ==================================================
-
-    if (!resend) {
-      throw new Error("RESEND_API_KEY is not configured");
+    if (!process.env.GMAIL_APP_PASSWORD) {
+      throw new Error("GMAIL_APP_PASSWORD is not configured");
     }
 
-    const fromEmail =
-      process.env.RESEND_FROM_EMAIL ||
-      "IntelliQuiz <onboarding@resend.dev>";
-
-    const { data, error } = await resend.emails.send({
-      from: fromEmail,
-
-      to: [email],
-
+    const mailOptions = {
+      from: `IntelliQuiz <${process.env.GMAIL_USER}>`,
+      to: email,
       subject: "Verify Your IntelliQuiz Account",
 
       html: `
@@ -68,7 +47,6 @@ export const sendVerificationEmail = async (email, otp) => {
             background: #ffffff;
           "
         >
-
           <h2 style="color: #6366f1;">
             Welcome to IntelliQuiz 🎓
           </h2>
@@ -99,8 +77,8 @@ export const sendVerificationEmail = async (email, otp) => {
           </p>
 
           <p style="color: #6b7280;">
-            If you did not create this account,
-            you can safely ignore this email.
+            If you did not create this account, you can safely ignore
+            this email.
           </p>
 
           <hr />
@@ -109,23 +87,19 @@ export const sendVerificationEmail = async (email, otp) => {
             © ${new Date().getFullYear()}
             IntelliQuiz. All rights reserved.
           </p>
-
         </div>
       `,
-    });
+    };
 
-    if (error) {
-      console.error("❌ RESEND ERROR:", error);
+    const info = await transporter.sendMail(mailOptions);
 
-      throw new Error(
-        error.message || "Unable to send verification email"
-      );
-    }
+    console.log("✅ Verification email sent:", info.messageId);
 
-    console.log("✅ Verification email sent:", data?.id);
-
-    return data;
-
+    return {
+      success: true,
+      messageId: info.messageId,
+      email,
+    };
   } catch (error) {
     console.error("❌ EMAIL SEND ERROR:", error);
 
