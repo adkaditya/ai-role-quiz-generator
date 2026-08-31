@@ -5,7 +5,7 @@
 import nodemailer from "nodemailer";
 
 // ======================================================
-// GMAIL TRANSPORTER
+// GMAIL SMTP TRANSPORTER
 // ======================================================
 
 const transporter = nodemailer.createTransport({
@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // ======================================================
-// SEND VERIFICATION OTP
+// SEND OTP EMAIL
 // ======================================================
 
 export const sendVerificationEmail = async (email, otp) => {
@@ -30,44 +30,36 @@ export const sendVerificationEmail = async (email, otp) => {
       throw new Error("GMAIL_APP_PASSWORD is not configured");
     }
 
-    const mailOptions = {
-      from: `IntelliQuiz <${process.env.GMAIL_USER}>`,
+    const info = await transporter.sendMail({
+      from: `"IntelliQuiz" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: "Verify Your IntelliQuiz Account",
 
       html: `
-        <div
-          style="
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 30px;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            background: #ffffff;
-          "
-        >
+        <div style="
+          font-family: Arial, sans-serif;
+          max-width: 600px;
+          margin: 40px auto;
+          padding: 30px;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          background: #ffffff;
+        ">
           <h2 style="color: #6366f1;">
             Welcome to IntelliQuiz 🎓
           </h2>
 
-          <p>
-            Thank you for creating your IntelliQuiz account.
-          </p>
+          <p>Thank you for creating your IntelliQuiz account.</p>
 
-          <p>
-            Please use the following OTP to verify your email:
-          </p>
+          <p>Please use the following OTP to verify your email:</p>
 
-          <div
-            style="
-              font-size: 32px;
-              font-weight: bold;
-              letter-spacing: 8px;
-              margin: 25px 0;
-              color: #111827;
-            "
-          >
+          <div style="
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            margin: 25px 0;
+            color: #111827;
+          ">
             ${otp}
           </div>
 
@@ -89,11 +81,9 @@ export const sendVerificationEmail = async (email, otp) => {
           </p>
         </div>
       `,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-
-    console.log("✅ Verification email sent:", info.messageId);
+    console.log("✅ OTP email sent:", info.messageId);
 
     return {
       success: true,
@@ -104,7 +94,7 @@ export const sendVerificationEmail = async (email, otp) => {
     console.error("❌ EMAIL SEND ERROR:", error);
 
     throw new Error(
-      error.message || "Unable to send verification email"
+      error.message || "Unable to send OTP email"
     );
   }
 };
