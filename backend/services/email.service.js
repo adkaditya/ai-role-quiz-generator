@@ -5,7 +5,7 @@
 import nodemailer from "nodemailer";
 
 // ======================================================
-// GMAIL SMTP TRANSPORTER
+// GMAIL TRANSPORTER
 // ======================================================
 
 const transporter = nodemailer.createTransport({
@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // ======================================================
-// SEND OTP EMAIL
+// SEND VERIFICATION OTP
 // ======================================================
 
 export const sendVerificationEmail = async (email, otp) => {
@@ -30,7 +30,7 @@ export const sendVerificationEmail = async (email, otp) => {
       throw new Error("GMAIL_APP_PASSWORD is not configured");
     }
 
-    const info = await transporter.sendMail({
+    const mailOptions = {
       from: `"IntelliQuiz" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: "Verify Your IntelliQuiz Account",
@@ -45,13 +45,18 @@ export const sendVerificationEmail = async (email, otp) => {
           border-radius: 12px;
           background: #ffffff;
         ">
+
           <h2 style="color: #6366f1;">
             Welcome to IntelliQuiz 🎓
           </h2>
 
-          <p>Thank you for creating your IntelliQuiz account.</p>
+          <p>
+            Thank you for creating your IntelliQuiz account.
+          </p>
 
-          <p>Please use the following OTP to verify your email:</p>
+          <p>
+            Please use the following OTP to verify your email:
+          </p>
 
           <div style="
             font-size: 32px;
@@ -79,22 +84,28 @@ export const sendVerificationEmail = async (email, otp) => {
             © ${new Date().getFullYear()}
             IntelliQuiz. All rights reserved.
           </p>
+
         </div>
       `,
-    });
+    };
 
-    console.log("✅ OTP email sent:", info.messageId);
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("✅ OTP EMAIL SENT");
+    console.log("📧 To:", email);
+    console.log("📨 Message ID:", info.messageId);
 
     return {
       success: true,
       messageId: info.messageId,
       email,
     };
+
   } catch (error) {
     console.error("❌ EMAIL SEND ERROR:", error);
 
     throw new Error(
-      error.message || "Unable to send OTP email"
+      error.message || "Unable to send verification email"
     );
   }
 };
