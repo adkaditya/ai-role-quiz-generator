@@ -1,111 +1,133 @@
 // ======================================================
-// EMAIL SERVICE - GMAIL SMTP
-// ======================================================
-
-import nodemailer from "nodemailer";
-
-// ======================================================
-// GMAIL TRANSPORTER
-// ======================================================
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
-
-// ======================================================
-// SEND VERIFICATION OTP
+// EMAIL SERVICE - BREVO HTTPS API
 // ======================================================
 
 export const sendVerificationEmail = async (email, otp) => {
   try {
-    if (!process.env.GMAIL_USER) {
-      throw new Error("GMAIL_USER is not configured");
+    if (!process.env.BREVO_API_KEY) {
+      throw new Error("BREVO_API_KEY is not configured");
     }
 
-    if (!process.env.GMAIL_APP_PASSWORD) {
-      throw new Error("GMAIL_APP_PASSWORD is not configured");
+    if (!process.env.BREVO_SENDER_EMAIL) {
+      throw new Error("BREVO_SENDER_EMAIL is not configured");
     }
 
-    const mailOptions = {
-      from: `"IntelliQuiz" <${process.env.GMAIL_USER}>`,
-      to: email,
-      subject: "Verify Your IntelliQuiz Account",
+    const response = await fetch(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        method: "POST",
 
-      html: `
-        <div style="
-          font-family: Arial, sans-serif;
-          max-width: 600px;
-          margin: 40px auto;
-          padding: 30px;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          background: #ffffff;
-        ">
+        headers: {
+          accept: "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+          "content-type": "application/json",
+        },
 
-          <h2 style="color: #6366f1;">
-            Welcome to IntelliQuiz 🎓
-          </h2>
+        body: JSON.stringify({
+          sender: {
+            name:
+              process.env.BREVO_SENDER_NAME ||
+              "IntelliQuiz",
 
-          <p>
-            Thank you for creating your IntelliQuiz account.
-          </p>
+            email: process.env.BREVO_SENDER_EMAIL,
+          },
 
-          <p>
-            Please use the following OTP to verify your email:
-          </p>
+          to: [
+            {
+              email,
+            },
+          ],
 
-          <div style="
-            font-size: 32px;
-            font-weight: bold;
-            letter-spacing: 8px;
-            margin: 25px 0;
-            color: #111827;
-          ">
-            ${otp}
-          </div>
+          subject: "Verify Your IntelliQuiz Account",
 
-          <p>
-            This OTP will expire in
-            <strong>10 minutes</strong>.
-          </p>
+          htmlContent: `
+            <div style="
+              font-family: Arial, sans-serif;
+              max-width: 600px;
+              margin: 40px auto;
+              padding: 30px;
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              background: #ffffff;
+            ">
 
-          <p style="color: #6b7280;">
-            If you did not create this account, you can safely ignore
-            this email.
-          </p>
+              <h2 style="color: #6366f1;">
+                Welcome to IntelliQuiz 🎓
+              </h2>
 
-          <hr />
+              <p>
+                Thank you for creating your IntelliQuiz account.
+              </p>
 
-          <p style="font-size: 12px; color: #9ca3af;">
-            © ${new Date().getFullYear()}
-            IntelliQuiz. All rights reserved.
-          </p>
+              <p>
+                Please use the following OTP to verify your email:
+              </p>
 
-        </div>
-      `,
-    };
+              <div style="
+                font-size: 32px;
+                font-weight: bold;
+                letter-spacing: 8px;
+                margin: 25px 0;
+                color: #111827;
+              ">
+                ${otp}
+              </div>
 
-    const info = await transporter.sendMail(mailOptions);
+              <p>
+                This OTP will expire in
+                <strong>10 minutes</strong>.
+              </p>
+
+              <p style="color: #6b7280;">
+                If you did not create this account,
+                you can safely ignore this email.
+              </p>
+
+              <hr />
+
+              <p style="
+                font-size: 12px;
+                color: #9ca3af;
+              ">
+                © ${new Date().getFullYear()}
+                IntelliQuiz. All rights reserved.
+              </p>
+
+            </div>
+          `,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("❌ BREVO ERROR:", data);
+
+      throw new Error(
+        data?.message ||
+          "Unable to send verification email"
+      );
+    }
 
     console.log("✅ OTP EMAIL SENT");
     console.log("📧 To:", email);
-    console.log("📨 Message ID:", info.messageId);
+    console.log(
+      "📨 Brevo Message ID:",
+      data?.messageId
+    );
 
     return {
       success: true,
-      messageId: info.messageId,
+      messageId: data?.messageId,
       email,
     };
-
   } catch (error) {
     console.error("❌ EMAIL SEND ERROR:", error);
 
     throw new Error(
-      error.message || "Unable to send verification email"
+      error.message ||
+        "Unable to send verification email"
     );
   }
 };

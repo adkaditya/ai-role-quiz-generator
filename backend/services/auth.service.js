@@ -5,8 +5,39 @@
 import Role from "../models/role.model.js";
 import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+
 import { generateOTP } from "../utils/generateOTP.js";
 import { sendVerificationEmail } from "./email.service.js";
+import redis from "../config/redis.js";
+
+// ======================================================
+// OTP CONFIG
+// ======================================================
+
+const OTP_EXPIRY_SECONDS = 10 * 60; // 10 minutes
+const OTP_MAX_ATTEMPTS = 5;
+
+// ======================================================
+// OTP HASH
+// ======================================================
+
+const hashOTP = (otp) => {
+  return crypto
+    .createHash("sha256")
+    .update(otp)
+    .digest("hex");
+};
+
+// ======================================================
+// REDIS KEYS
+// ======================================================
+
+const getVerificationKey = (email) =>
+  `intelliquiz:verification:${email}`;
+
+const getResetPasswordKey = (email) =>
+  `intelliquiz:reset-password:${email}`;
 
 // ======================================================
 // REGISTER USER
@@ -14,10 +45,6 @@ import { sendVerificationEmail } from "./email.service.js";
 
 export const registerUserService = async (data) => {
   const { name, email, password } = data;
-
-  // ------------------------------------------------------
-  // VALIDATION
-  // ------------------------------------------------------
 
   if (!name?.trim() || !email?.trim() || !password) {
     throw new Error("Name, email and password are required");
@@ -42,31 +69,33 @@ export const registerUserService = async (data) => {
   // ======================================================
 
   if (existingUser) {
-    // Already verified
     if (existingUser.isEmailVerified) {
       throw new Error("User already exists");
     }
 
-    // ----------------------------------------------------
-    // EXISTING BUT UNVERIFIED
-    // Generate new OTP
-    // ----------------------------------------------------
+    const verificationOTP = generateOTP();
 
-    const verificationOTP = String(generateOTP());
+    const otpData = {
+      otpHash: hashOTP(verificationOTP),
+      attempts: 0,
+    };
 
-    existingUser.verificationOTP = verificationOTP;
-    existingUser.verificationOTPExpires = new Date(
-      Date.now() + 10 * 60 * 1000
+    // Store OTP in Redis for 10 minutes
+    await redis.set(
+      getVerificationKey(normalizedEmail),
+      JSON.stringify(otpData),
+      {
+        ex: OTP_EXPIRY_SECONDS,
+      }
     );
 
-    // Update name/password if signup is retried
     existingUser.name = name.trim();
     existingUser.password = password;
 
     await existingUser.save();
 
     // ----------------------------------------------------
-    // SEND OTP
+    // SEND OTP EMAIL
     // ----------------------------------------------------
 
     try {
@@ -84,9 +113,13 @@ export const registerUserService = async (data) => {
         emailError.message
       );
 
-      // Development fallback
-      console.log(
-        `🔐 DEVELOPMENT OTP for ${normalizedEmail}: ${verificationOTP}`
+      // Remove OTP if email could not be sent
+      await redis.del(
+        getVerificationKey(normalizedEmail)
+      );
+
+      throw new Error(
+        "OTP email could not be sent. Please try again later."
       );
     }
 
@@ -97,11 +130,7 @@ export const registerUserService = async (data) => {
   // GENERATE OTP
   // ======================================================
 
-  const verificationOTP = String(generateOTP());
-
-  const verificationOTPExpires = new Date(
-    Date.now() + 10 * 60 * 1000
-  );
+  const verificationOTP = generateOTP();
 
   // ======================================================
   // GET USER ROLE
@@ -121,15 +150,33 @@ export const registerUserService = async (data) => {
 
     isEmailVerified: false,
 
-    verificationOTP,
-    verificationOTPExpires,
+    // OTP is now stored in Redis
+    verificationOTP: null,
+    verificationOTPExpires: null,
 
     resetPasswordOTP: null,
     resetPasswordOTPExpires: null,
   });
 
   // ======================================================
-  // SEND VERIFICATION OTP
+  // STORE OTP IN REDIS
+  // ======================================================
+
+  const otpData = {
+    otpHash: hashOTP(verificationOTP),
+    attempts: 0,
+  };
+
+  await redis.set(
+    getVerificationKey(normalizedEmail),
+    JSON.stringify(otpData),
+    {
+      ex: OTP_EXPIRY_SECONDS,
+    }
+  );
+
+  // ======================================================
+  // SEND VERIFICATION EMAIL
   // ======================================================
 
   try {
@@ -147,9 +194,16 @@ export const registerUserService = async (data) => {
       emailError.message
     );
 
-    // Development fallback
-    console.log(
-      `🔐 DEVELOPMENT OTP for ${normalizedEmail}: ${verificationOTP}`
+    // Delete Redis OTP
+    await redis.del(
+      getVerificationKey(normalizedEmail)
+    );
+
+    // Remove user because verification email failed
+    await User.findByIdAndDelete(createdUser._id);
+
+    throw new Error(
+      "OTP email could not be sent. Please try again later."
     );
   }
 
@@ -220,46 +274,61 @@ export const verifyEmailService = async (email, otp) => {
     throw new Error("User not found");
   }
 
-  // ------------------------------------------------------
-  // ALREADY VERIFIED
-  // ------------------------------------------------------
-
   if (user.isEmailVerified) {
     throw new Error("Email is already verified");
   }
 
   // ------------------------------------------------------
-  // OTP EXISTS?
+  // GET OTP FROM REDIS
   // ------------------------------------------------------
 
-  if (!user.verificationOTP) {
-    throw new Error(
-      "No verification OTP found. Please request a new OTP."
-    );
-  }
+  const storedData = await redis.get(
+    getVerificationKey(normalizedEmail)
+  );
 
-  // ------------------------------------------------------
-  // CHECK OTP
-  // ------------------------------------------------------
-
-  if (
-    String(user.verificationOTP).trim() !==
-    normalizedOTP
-  ) {
-    throw new Error("Invalid OTP");
-  }
-
-  // ------------------------------------------------------
-  // CHECK OTP EXPIRY
-  // ------------------------------------------------------
-
-  if (
-    !user.verificationOTPExpires ||
-    user.verificationOTPExpires < new Date()
-  ) {
+  if (!storedData) {
     throw new Error(
       "OTP has expired. Please request a new OTP."
     );
+  }
+
+  const otpData =
+    typeof storedData === "string"
+      ? JSON.parse(storedData)
+      : storedData;
+
+  // ------------------------------------------------------
+  // MAX ATTEMPTS
+  // ------------------------------------------------------
+
+  if (otpData.attempts >= OTP_MAX_ATTEMPTS) {
+    await redis.del(
+      getVerificationKey(normalizedEmail)
+    );
+
+    throw new Error(
+      "Too many invalid OTP attempts. Please request a new OTP."
+    );
+  }
+
+  // ------------------------------------------------------
+  // VERIFY OTP
+  // ------------------------------------------------------
+
+  const incomingHash = hashOTP(normalizedOTP);
+
+  if (incomingHash !== otpData.otpHash) {
+    otpData.attempts += 1;
+
+    await redis.set(
+      getVerificationKey(normalizedEmail),
+      JSON.stringify(otpData),
+      {
+        keepttl: true,
+      }
+    );
+
+    throw new Error("Invalid OTP");
   }
 
   // ------------------------------------------------------
@@ -268,11 +337,12 @@ export const verifyEmailService = async (email, otp) => {
 
   user.isEmailVerified = true;
 
-  // Remove verification OTP
-  user.verificationOTP = null;
-  user.verificationOTPExpires = null;
-
   await user.save();
+
+  // OTP can only be used once
+  await redis.del(
+    getVerificationKey(normalizedEmail)
+  );
 
   return user;
 };
@@ -300,10 +370,6 @@ export const resendVerificationOTP = async (email) => {
     throw new Error("User not found");
   }
 
-  // ------------------------------------------------------
-  // ALREADY VERIFIED
-  // ------------------------------------------------------
-
   if (user.isEmailVerified) {
     throw new Error("Email is already verified");
   }
@@ -312,16 +378,21 @@ export const resendVerificationOTP = async (email) => {
   // GENERATE NEW OTP
   // ------------------------------------------------------
 
-  const verificationOTP = String(generateOTP());
+  const verificationOTP = generateOTP();
 
-  const verificationOTPExpires = new Date(
-    Date.now() + 10 * 60 * 1000
+  const otpData = {
+    otpHash: hashOTP(verificationOTP),
+    attempts: 0,
+  };
+
+  // Old OTP automatically replaced
+  await redis.set(
+    getVerificationKey(normalizedEmail),
+    JSON.stringify(otpData),
+    {
+      ex: OTP_EXPIRY_SECONDS,
+    }
   );
-
-  user.verificationOTP = verificationOTP;
-  user.verificationOTPExpires = verificationOTPExpires;
-
-  await user.save();
 
   // ------------------------------------------------------
   // SEND OTP
@@ -342,9 +413,12 @@ export const resendVerificationOTP = async (email) => {
       emailError.message
     );
 
-    // Development fallback
-    console.log(
-      `🔐 DEVELOPMENT OTP for ${normalizedEmail}: ${verificationOTP}`
+    await redis.del(
+      getVerificationKey(normalizedEmail)
+    );
+
+    throw new Error(
+      "OTP email could not be sent. Please try again later."
     );
   }
 
@@ -382,16 +456,24 @@ export const generatePasswordResetOTP = async (email) => {
   // GENERATE RESET OTP
   // ------------------------------------------------------
 
-  const resetOTP = String(generateOTP());
+  const resetOTP = generateOTP();
 
-  const resetOTPExpires = new Date(
-    Date.now() + 10 * 60 * 1000
+  const otpData = {
+    otpHash: hashOTP(resetOTP),
+    attempts: 0,
+  };
+
+  // ------------------------------------------------------
+  // STORE RESET OTP IN REDIS
+  // ------------------------------------------------------
+
+  await redis.set(
+    getResetPasswordKey(normalizedEmail),
+    JSON.stringify(otpData),
+    {
+      ex: OTP_EXPIRY_SECONDS,
+    }
   );
-
-  user.resetPasswordOTP = resetOTP;
-  user.resetPasswordOTPExpires = resetOTPExpires;
-
-  await user.save();
 
   // ------------------------------------------------------
   // SEND RESET OTP
@@ -412,9 +494,12 @@ export const generatePasswordResetOTP = async (email) => {
       emailError.message
     );
 
-    // Development fallback
-    console.log(
-      `🔐 DEVELOPMENT RESET OTP for ${normalizedEmail}: ${resetOTP}`
+    await redis.del(
+      getResetPasswordKey(normalizedEmail)
+    );
+
+    throw new Error(
+      "Reset OTP email could not be sent. Please try again later."
     );
   }
 
@@ -451,26 +536,54 @@ export const verifyPasswordResetOTP = async (
   }
 
   // ------------------------------------------------------
-  // CHECK OTP
+  // GET RESET OTP FROM REDIS
   // ------------------------------------------------------
 
-  if (
-    !user.resetPasswordOTP ||
-    String(user.resetPasswordOTP).trim() !==
-      normalizedOTP
-  ) {
-    throw new Error("Invalid OTP");
+  const storedData = await redis.get(
+    getResetPasswordKey(normalizedEmail)
+  );
+
+  if (!storedData) {
+    throw new Error("OTP has expired");
+  }
+
+  const otpData =
+    typeof storedData === "string"
+      ? JSON.parse(storedData)
+      : storedData;
+
+  // ------------------------------------------------------
+  // MAX ATTEMPTS
+  // ------------------------------------------------------
+
+  if (otpData.attempts >= OTP_MAX_ATTEMPTS) {
+    await redis.del(
+      getResetPasswordKey(normalizedEmail)
+    );
+
+    throw new Error(
+      "Too many invalid OTP attempts. Please request a new OTP."
+    );
   }
 
   // ------------------------------------------------------
-  // CHECK EXPIRY
+  // VERIFY OTP
   // ------------------------------------------------------
 
-  if (
-    !user.resetPasswordOTPExpires ||
-    user.resetPasswordOTPExpires < new Date()
-  ) {
-    throw new Error("OTP has expired");
+  const incomingHash = hashOTP(normalizedOTP);
+
+  if (incomingHash !== otpData.otpHash) {
+    otpData.attempts += 1;
+
+    await redis.set(
+      getResetPasswordKey(normalizedEmail),
+      JSON.stringify(otpData),
+      {
+        keepttl: true,
+      }
+    );
+
+    throw new Error("Invalid OTP");
   }
 
   return user;
