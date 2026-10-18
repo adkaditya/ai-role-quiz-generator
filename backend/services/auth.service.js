@@ -44,7 +44,7 @@ const getResetPasswordKey = (email) =>
 // ======================================================
 
 export const registerUserService = async (data) => {
-  const { name, email, password } = data;
+  const { name, email, password, phoneNumber } = data;
 
   if (!name?.trim() || !email?.trim() || !password) {
     throw new Error("Name, email and password are required");
@@ -89,10 +89,15 @@ export const registerUserService = async (data) => {
       }
     );
 
-    existingUser.name = name.trim();
-    existingUser.password = password;
+  existingUser.name = name.trim();
+existingUser.password = password;
 
-    await existingUser.save();
+if (phoneNumber?.trim()) {
+  existingUser.phoneNumber = phoneNumber.trim();
+  existingUser.isPhoneVerified = false;
+}
+
+await existingUser.save();
 
     // ----------------------------------------------------
     // SEND OTP EMAIL
@@ -142,13 +147,15 @@ export const registerUserService = async (data) => {
   // CREATE USER
   // ======================================================
 
-  const createdUser = await User.create({
-    name: name.trim(),
-    email: normalizedEmail,
-    password,
-    role: role._id,
+const createdUser = await User.create({
+  name: name.trim(),
+  email: normalizedEmail,
+  password,
+  role: role._id,
 
-    isEmailVerified: false,
+  phoneNumber: phoneNumber?.trim() || null,
+  isPhoneVerified: false,
+  isEmailVerified: false,
 
     // OTP is now stored in Redis
     verificationOTP: null,

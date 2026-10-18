@@ -37,7 +37,7 @@ const questionSchema = new mongoose.Schema(
       required: [true, "Correct Answer is required"],
       validate: {
         validator: function (value) {
-          return value && value.length >= 1;
+          return value && value.length >= 1; 
         },
         message: "Invalid Correct Answer !",
       },

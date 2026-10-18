@@ -47,6 +47,13 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
+    googleId: {
+  type: String,
+  unique: true,
+  sparse: true,
+  default: null,
+},
+
     // ==========================================
     // User Status
     // ==========================================
@@ -89,6 +96,20 @@ resetPasswordOTPExpires: {
   type: Date,
   default: null,
 },
+
+    // ==========================================
+    // Phone Number & SMS Verification
+    // ==========================================
+    phoneNumber: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
 
     // ==========================================
     // User Role

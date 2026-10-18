@@ -75,3 +75,35 @@ export const changeUserRole = async (userId, roleName) => {
 
   return response.data;
 };
+
+
+
+/* Send SMS OTP */
+export const sendSMSOTP = async (phoneNumber) => {
+const response = await axiosClient.post("/auth/send-sms-otp", {
+  phoneNumber,
+});
+
+  return response.data;
+};
+
+/* Verify SMS OTP */
+export const verifySMSOTP = async (phoneNumber, otp) => {
+  const response = await axiosClient.post("/auth/verify-sms-otp", {
+    phoneNumber,
+    otp,
+  });
+
+  return response.data;
+};
+
+
+/* PHONE OTP LOGIN */
+export const phoneOTPLogin = async (phoneNumber, otp) => {
+  const response = await axiosClient.post("/auth/phone-login", {
+    phoneNumber,
+    otp,
+  });
+
+  return response.data;
+};

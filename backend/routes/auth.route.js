@@ -1,8 +1,6 @@
-// ==========================================
-// AUTH ROUTES
-// ==========================================
 
 import { Router } from "express";
+import passport from "../config/passport.js";
 
 import {
   registerUser,
@@ -11,56 +9,45 @@ import {
   changeUserRole,
   verifyEmail,
   resendOTP,
-
+  sendSMSOTPController,
+  verifySMSOTPController,
+  googleAuthCallback,
 } from "../controllers/auth.controller.js";
 
 const router = Router();
 
-// ==========================================
-// REGISTER
-// POST /api/v1/auth/register
-// ==========================================
-
+// Register
 router.post("/register", registerUser);
 
-// ==========================================
-// LOGIN
-// POST /api/v1/auth/login
-// ==========================================
-
+// Email and password login
 router.post("/login", loginUser);
 
-// ==========================================
-// VERIFY EMAIL OTP
-// POST /api/v1/auth/verify-email
-// ==========================================
-
+// Email verification
 router.post("/verify-email", verifyEmail);
 
-// ==========================================
-// RESEND OTP
-// POST /api/v1/auth/resend-otp
-// ==========================================
-
+// Resend email OTP
 router.post("/resend-otp", resendOTP);
 
-// ==========================================
-// DELETE USER
-// DELETE /api/v1/auth/delete-user
-// ==========================================
-
+// Delete user
 router.delete("/delete-user", deleteUser);
 
-// ==========================================
-// CHANGE USER ROLE
-// PATCH /api/v1/auth/change-role
-// ==========================================
-
+// Change user role
 router.patch("/change-role", changeUserRole);
 
-// ==========================================
-// EXPORT
-// ==========================================
+// SMS OTP
+router.post("/send-sms-otp", sendSMSOTPController);
+router.post("/verify-sms-otp", verifySMSOTPController);
 
+// Start Google login
+router.get(
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+  })
+);
+
+// Google callback
+router.get("/google/callback", googleAuthCallback);
 
 export default router;

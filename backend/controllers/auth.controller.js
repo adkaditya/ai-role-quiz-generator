@@ -1,3 +1,5 @@
+import passport from "../config/passport.js";
+
 import Role from "../models/role.model.js";
 import User from "../models/user.model.js";
 import {
@@ -6,6 +8,10 @@ import {
   verifyEmailService,
   resendVerificationOTP,
 } from "../services/auth.service.js";
+import {
+  sendSmsOTP,
+  verifySmsOTP,
+} from "../services/sms.service.js";
 
 // ==========================
 // Register User
@@ -230,4 +236,124 @@ export const resendOTP = async (req, res) => {
       message: error.message,
     });
   }
+};
+
+
+/* Send SMS OTP */
+export const sendSMSOTPController = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        status: "error",
+        message: "Phone number is required",
+      });
+    }
+
+    const result = await sendSmsOTP(phoneNumber);
+
+    return res.status(200).json({
+      status: "success",
+      message: "SMS OTP sent successfully",
+      data: {
+        status: result.status,
+      },
+    });
+  } catch (error) {
+    console.error("SEND SMS OTP ERROR:", error.message);
+
+    return res.status(400).json({
+      status: "error",
+      message: error.message || "Unable to send SMS OTP",
+    });
+  }
+};
+
+/* Verify SMS OTP */
+export const verifySMSOTPController = async (req, res) => {
+  try {
+    const { phoneNumber, otp } = req.body;
+
+    if (!phoneNumber || !otp) {
+      return res.status(400).json({
+        status: "error",
+        message: "Phone number and OTP are required",
+      });
+    }
+
+    const result = await verifySmsOTP(phoneNumber, otp);
+
+    if (result.status !== "approved") {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid or expired SMS OTP",
+      });
+    }
+    const normalizedPhone = phoneNumber.trim();
+
+const user = await User.findOneAndUpdate(
+  { phoneNumber: normalizedPhone },
+  { $set: { isPhoneVerified: true } },
+  { new: true }
+);
+
+if (!user) {
+  return res.status(404).json({
+    status: "error",
+    message: "OTP verified, but no registered user has this phone number",
+  });
+}
+
+    return res.status(200).json({
+      status: "success",
+      message: "Phone number verified successfully",
+    });
+  } catch (error) {
+    console.error("VERIFY SMS OTP ERROR:", error.message);
+
+    return res.status(400).json({
+      status: "error",
+      message: error.message || "SMS OTP verification failed",
+    });
+  }
+};
+
+export const googleAuthCallback = (req, res, next) => {
+  passport.authenticate(
+    "google",
+    { session: false },
+    async (error, user) => {
+      try {
+        if (error || !user) {
+          console.error("GOOGLE AUTH ERROR:", error);
+
+          return res.redirect(
+            `${process.env.FRONTEND_URL}/login?error=google_auth_failed`
+          );
+        }
+
+        if (user.status !== "active") {
+          return res.redirect(
+            `${process.env.FRONTEND_URL}/login?error=account_inactive`
+          );
+        }
+
+        const accessToken = await generateToken(user._id);
+
+        const populatedUser = await User.findById(user._id).populate("role");
+
+        // JWT ko URL mein expose nahi kar rahe.
+        // Frontend exchange endpoint secure karna next step hai.
+        return res.status(200).json({
+          status: "success",
+          message: "Google authentication successful",
+          accessToken,
+          user: populatedUser,
+        });
+      } catch (callbackError) {
+        next(callbackError);
+      }
+    }
+  )(req, res, next);
 };
