@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -19,7 +20,6 @@ import { useAuthContext } from "../../context/AuthContext";
 
 function LoginPage() {
   const { login } = useAuthContext();
-
   const navigate = useNavigate();
 
   const [loginData, setLoginData] = useState({
@@ -28,31 +28,20 @@ function LoginPage() {
   });
 
   const [error, setError] = useState("");
-
   const [loading, setLoading] = useState(false);
 
-  // ==========================================
-  // INPUT
-  // ==========================================
   const handleInputChange = (event) => {
     setLoginData({
       ...loginData,
       [event.target.name]: event.target.value,
     });
-
     setError("");
   };
 
-  // ==========================================
-  // LOGIN
-  // ==========================================
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
-    if (
-      !loginData.email.trim() ||
-      !loginData.password.trim()
-    ) {
+    if (!loginData.email.trim() || !loginData.password.trim()) {
       setError("Email and Password are required");
       toast.error("Email and Password are required");
       return;
@@ -64,14 +53,9 @@ function LoginPage() {
 
       const response = await loginUser(loginData);
 
-      toast.success(
-        response.message || "Login successful!"
-      );
+      login(response.user, response.accessToken);
 
-      login(
-        response.user,
-        response.accessToken
-      );
+      toast.success(response.message || "Login successful!");
 
       setLoginData({
         email: "",
@@ -81,12 +65,10 @@ function LoginPage() {
       navigate("/dashboard");
     } catch (error) {
       const status = error?.response?.status;
-
       const message =
         error?.response?.data?.message ||
         "Login failed. Please try again.";
 
-      // Email verification required
       if (status === 403) {
         toast.error(message);
 
@@ -107,16 +89,17 @@ function LoginPage() {
     }
   };
 
-  // ==========================================
-  // CLEAR
-  // ==========================================
   const handleClear = () => {
     setLoginData({
       email: "",
       password: "",
     });
-
     setError("");
+  };
+
+  const handleGoogleLogin = () => {
+    window.location.href =
+      "https://ai-role-quiz-generator.onrender.com/api/v1/auth/google";
   };
 
   return (
@@ -128,10 +111,7 @@ function LoginPage() {
     >
       <Card className="w-full md:w-1/2 lg:w-1/3 py-10">
         <CardHeader className="text-center">
-          <LogIn
-            size={45}
-            className="mx-auto"
-          />
+          <LogIn size={45} className="mx-auto" />
 
           <CardTitle className="text-2xl font-semibold">
             Login to Your Account
@@ -144,21 +124,15 @@ function LoginPage() {
 
         <CardContent>
           {error && (
-            <p className="text-red-500 py-3">
-              {error}
-            </p>
+            <p className="text-red-500 py-3">{error}</p>
           )}
 
           <form
             onSubmit={handleFormSubmit}
             className="flex flex-col gap-4"
           >
-            {/* EMAIL */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="email">
-                Email
-              </Label>
-
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 name="email"
@@ -170,12 +144,8 @@ function LoginPage() {
               />
             </div>
 
-            {/* PASSWORD */}
             <div className="flex flex-col gap-2">
-              <Label htmlFor="password">
-                Password
-              </Label>
-
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 name="password"
@@ -187,16 +157,13 @@ function LoginPage() {
               />
             </div>
 
-            {/* BUTTONS */}
             <div className="flex justify-center gap-3 pt-3">
               <Button
                 type="submit"
                 disabled={loading}
                 size="lg"
               >
-                {loading
-                  ? "Please wait..."
-                  : "Login"}
+                {loading ? "Please wait..." : "Login"}
               </Button>
 
               <Button
@@ -209,6 +176,25 @@ function LoginPage() {
               </Button>
             </div>
           </form>
+
+          <div className="relative flex items-center py-5">
+            <div className="flex-grow border-t" />
+            <span className="mx-3 text-sm text-muted-foreground">
+              OR
+            </span>
+            <div className="flex-grow border-t" />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full"
+            onClick={handleGoogleLogin}
+          >
+            <span className="mr-2 font-bold">G</span>
+            Continue with Google
+          </Button>
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3">
