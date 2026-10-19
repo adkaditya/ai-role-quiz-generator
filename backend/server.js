@@ -1,33 +1,15 @@
-// ======================================================
-// ENVIRONMENT VARIABLES
-// ======================================================
 
 import dotenv from "dotenv";
 dotenv.config();
 
-// ======================================================
-// IMPORTS
-// ======================================================
-
 import express from "express";
 import cors from "cors";
+import passport from "passport";
 
-// ======================================================
-// CREATE EXPRESS APP
-// ======================================================
-
-const app = express();
-
-// ======================================================
-// DATABASE CONNECTION
-// ======================================================
-
+// Database connection
 import "./utils/db.js";
 
-// ======================================================
-// ROUTES
-// ======================================================
-
+// Routes
 import authRouter from "./routes/auth.route.js";
 import violationRouter from "./routes/violation.route.js";
 import categoryRouter from "./routes/category.route.js";
@@ -38,19 +20,14 @@ import leaderboardRouter from "./routes/leaderboard.route.js";
 import userRouter from "./routes/user.route.js";
 import aiRouter from "./routes/ai.route.js";
 
-// ======================================================
-// ERROR HANDLER
-// ======================================================
-
+// Error handler
 import { exceptionHandler } from "./middlewares/exceptionHandler.middleware.js";
 
-// ======================================================
-// CORS CONFIGURATION
-// ======================================================
+const app = express();
 
+// CORS configuration
 const allowedOrigins = [
   "https://ai-role-quiz-generator.vercel.app",
-
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
@@ -58,19 +35,17 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests without Origin
-    // Example: Postman, curl, server-to-server
+  origin(origin, callback) {
+    // Allow requests without Origin, such as server-to-server
     if (!origin) {
       return callback(null, true);
     }
 
-    // Exact allowed origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    // Allow Vercel preview/deployment URLs
+    // Allow Vercel preview deployments
     if (
       /^https:\/\/ai-role-quiz-generator-[a-z0-9-]+\.vercel\.app$/i.test(
         origin
@@ -85,20 +60,12 @@ const corsOptions = {
     }
 
     console.log("Blocked CORS Origin:", origin);
-
     return callback(new Error("Not allowed by CORS"));
   },
 
   credentials: true,
 
-  methods: [
-    "GET",
-    "POST",
-    "PUT",
-    "PATCH",
-    "DELETE",
-    "OPTIONS",
-  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 
   allowedHeaders: [
     "Origin",
@@ -111,63 +78,36 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
-// ======================================================
-// CORS MIDDLEWARE
-// ======================================================
-
+// Middleware
 app.use(cors(corsOptions));
-
-
-// ======================================================
-// BODY PARSER
-// ======================================================
+app.use(passport.initialize());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ======================================================
-// STATIC FILES
-// ======================================================
-
+// Static files
 app.use("/uploads", express.static("uploads"));
 
-// ======================================================
-// TEST ROUTE
-// ======================================================
-
+// Test route
 app.get("/test", (req, res) => {
   return res.status(200).json({
     success: true,
-    message: "Backend is working correctly 🚀",
+    message: "Backend is working correctly",
   });
 });
 
-// ======================================================
-// ROOT ROUTE
-// ======================================================
-
+// Root route
 app.get("/", (req, res) => {
   return res.status(200).json({
     success: true,
-    message: "AI Role Quiz Backend is Running 🚀",
+    message: "AI Role Quiz Backend is Running",
   });
 });
 
-// ======================================================
-// AUTH ROUTES
-// ======================================================
-
-// POST /api/v1/auth/register
-// POST /api/v1/auth/login
-// POST /api/v1/auth/verify-email
-// POST /api/v1/auth/resend-otp
-
+// Authentication routes
 app.use("/api/v1/auth", authRouter);
 
-// ======================================================
-// OTHER API ROUTES
-// ======================================================
-
+// Other API routes
 app.use("/api/v1/violations", violationRouter);
 
 app.use("/api/v1", categoryRouter);
@@ -179,10 +119,7 @@ app.use("/api/v1", userRouter);
 
 app.use("/api/v1/ai", aiRouter);
 
-// ======================================================
-// 404 ROUTE
-// ======================================================
-
+// 404 handler
 app.use((req, res) => {
   return res.status(404).json({
     success: false,
@@ -190,21 +127,15 @@ app.use((req, res) => {
   });
 });
 
-// ======================================================
-// GLOBAL ERROR HANDLER
-// ======================================================
-
+// Global error handler
 app.use(exceptionHandler);
 
-// ======================================================
-// START SERVER
-// ======================================================
-
+// Start server
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("======================================");
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 PORT: ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
+  console.log(`PORT: ${PORT}`);
   console.log("======================================");
 });
